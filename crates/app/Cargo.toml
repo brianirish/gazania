@@ -1,0 +1,12 @@
+[package]
+name = "diskhub-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "diskhub-app"
+path = "src/main.rs"
+
+[dependencies]
+diskhub-core.workspace = true
