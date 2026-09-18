@@ -45,7 +45,7 @@ impl VolumeRow {
         row.set_title(&volume.label.clone().unwrap_or_else(|| volume.device.display().to_string()));
 
         let mounts = if volume.mount_points.is_empty() {
-            "Not mounted".to_string()
+            human_size(volume.size)
         } else {
             volume
                 .mount_points
@@ -69,7 +69,7 @@ impl VolumeRow {
 
         let usage = match volume.usage {
             Some(u) => format!("{} of {}", human_size(u.used), human_size(volume.size)),
-            None => human_size(volume.size),
+            None => "Not mounted".to_string(),
         };
         let label = gtk::Label::new(Some(&usage));
         label.add_css_class("dim-label");
