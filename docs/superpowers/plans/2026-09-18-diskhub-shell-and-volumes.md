@@ -4540,7 +4540,8 @@ set -euo pipefail
 src=$1
 target=$2
 profile=$3
-outdir=$4
+# meson passes @OUTDIR@ relative to the build dir; resolve it before leaving.
+outdir=$(cd "$4" && pwd)
 
 export CARGO_TARGET_DIR="$target"
 cd "$src"
@@ -4752,6 +4753,10 @@ git commit -m "Run cargo fmt and satisfy clippy across the workspace
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
+
+- [ ] **Step 1b: Two validator hints from Task 16**
+
+In `data/io.github.brianirish.Zinnia.desktop.in` change `Categories=System;Utility;GTK;` to `Categories=System;GTK;` (one main category, so the app is listed once). In `meson.build` change `cargo = find_program('cargo', required: true)` to `find_program('cargo', required: true)` (the variable was never used). Include both in the Step 7 commit.
 
 - [ ] **Step 2: Enforce it in CI**
 
