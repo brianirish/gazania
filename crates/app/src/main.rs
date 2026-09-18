@@ -1,5 +1,6 @@
 mod application;
 mod config;
+mod pages;
 mod shortcuts;
 mod widgets;
 mod window;
