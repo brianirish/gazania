@@ -3,6 +3,7 @@
   <gresource prefix="/io/github/brianirish/Zinnia">
     <file compressed="true" preprocess="xml-stripblanks">window.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">overview_page.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">drive_page.ui</file>
     <file compressed="true">style.css</file>
   </gresource>
 </gresources>

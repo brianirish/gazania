@@ -1,5 +1,6 @@
 use crate::application::Application;
 use crate::config::APP_ID;
+use crate::pages::drive::DrivePage;
 use crate::pages::overview::OverviewPage;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*, CompositeTemplate};
@@ -133,6 +134,15 @@ impl Window {
                 PageAction::Prev => overview.focus_prev(),
                 PageAction::Activate => overview.activate_focused(),
                 PageAction::View(_) | PageAction::CycleView => {}
+            }
+            return;
+        }
+        if let Some(drive) = page.downcast_ref::<DrivePage>() {
+            match action {
+                PageAction::View(n) => drive.select_view(n),
+                PageAction::CycleView => drive.cycle_view(),
+                PageAction::Refresh => drive.refresh(),
+                PageAction::Next | PageAction::Prev | PageAction::Activate => {}
             }
             return;
         }
