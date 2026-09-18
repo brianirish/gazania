@@ -1,5 +1,6 @@
 use crate::application::Application;
 use crate::config::APP_ID;
+use crate::pages::overview::OverviewPage;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*, CompositeTemplate};
 
@@ -23,6 +24,8 @@ mod imp {
         pub navigation: TemplateChild<adw::NavigationView>,
         #[template_child]
         pub toasts: TemplateChild<adw::ToastOverlay>,
+        #[template_child]
+        pub overview: TemplateChild<OverviewPage>,
     }
 
     #[glib::object_subclass]
@@ -32,6 +35,7 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            OverviewPage::ensure_type();
             klass.bind_template();
         }
 
@@ -118,12 +122,20 @@ impl Window {
     }
 
     /// Route a page-level action to whichever page is visible.
-    /// Task 13 adds the overview arm and Task 14 the drive-page arm.
     pub fn dispatch(&self, action: PageAction) {
         let Some(page) = self.navigation().visible_page() else {
             return;
         };
-        let _ = &page;
+        if let Some(overview) = page.downcast_ref::<OverviewPage>() {
+            match action {
+                PageAction::Refresh => overview.reload(),
+                PageAction::Next => overview.focus_next(),
+                PageAction::Prev => overview.focus_prev(),
+                PageAction::Activate => overview.activate_focused(),
+                PageAction::View(_) | PageAction::CycleView => {}
+            }
+            return;
+        }
         self.toast(&format!("{action:?} does nothing on this page yet"));
     }
 }
