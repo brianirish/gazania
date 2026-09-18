@@ -2782,9 +2782,9 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   - `pub enum PageAction { Refresh, Next, Prev, Activate, View(i32), CycleView }` in `window.rs`.
   - `Window::dispatch(&self, action: PageAction)`: routes to the visible page. Task 13 and Task 14 add match arms; until then every action shows a toast.
   - Actions: `app.quit`, `win.back`, `win.refresh`, `win.next`, `win.prev`, `win.activate`, `win.view` (int32 target), `win.cycle-view`, `win.shortcuts`.
-  - Accels: `<Control>q`; `Escape` and `h`; `<Control>r`; `j`; `k`; `l`; `1`..`4` as `win.view(1)`..`win.view(4)`; `<Control>Tab`; `question`.
+  - Application accels: `<Control>q`; `<Control>r`; `<Control>Tab`; `question`. Shortcut-controller triggers: `h`; `j`; `k`; `l`; `1`..`4` targeting `win.view` with an int32 argument.
   - `shortcuts::present(parent: &gtk::Widget)` shows an `adw::ShortcutsDialog`.
-  - Plain-letter accels never fire while a text entry has focus: GTK delivers key events to the focused widget in the bubble phase before the window's accel handling, and entries consume printable keys.
+  - Unmodified keys (`h` `j` `k` `l` `1`..`4`) live on a bubble-phase, local-scope `gtk::ShortcutController` on the window so the focus widget and any dialog see them first; only modified keys and `?` are application accelerators so menus can display them. Escape is left to `adw::NavigationView` and `adw::Dialog`, which both handle it natively.
 
 - [ ] **Step 1: Add app actions and accelerators**
 
@@ -2798,15 +2798,7 @@ In `crates/app/src/application.rs`, add to `impl ApplicationImpl for Application
 
             let accels: &[(&str, &[&str])] = &[
                 ("app.quit", &["<Control>q"]),
-                ("win.back", &["Escape", "h"]),
                 ("win.refresh", &["<Control>r"]),
-                ("win.next", &["j"]),
-                ("win.prev", &["k"]),
-                ("win.activate", &["l"]),
-                ("win.view(1)", &["1"]),
-                ("win.view(2)", &["2"]),
-                ("win.view(3)", &["3"]),
-                ("win.view(4)", &["4"]),
                 ("win.cycle-view", &["<Control>Tab"]),
                 ("win.shortcuts", &["question"]),
             ];
@@ -2866,6 +2858,33 @@ Add to `impl Window`:
             .activate(|win: &Self, _, _| win.dispatch(PageAction::CycleView))
             .build();
         self.add_action_entries([back, shortcuts, refresh, next, prev, activate, view, cycle]);
+
+        // Unmodified keys go on a bubble-phase controller so the focus widget
+        // (entries, dialogs, list boxes) sees them first. Escape is left alone:
+        // AdwNavigationView pops and AdwDialog closes on it natively.
+        let keys = gtk::ShortcutController::new();
+        keys.set_scope(gtk::ShortcutScope::Local);
+        keys.set_propagation_phase(gtk::PropagationPhase::Bubble);
+        for (trigger, action, target) in [
+            ("h", "win.back", None),
+            ("j", "win.next", None),
+            ("k", "win.prev", None),
+            ("l", "win.activate", None),
+            ("1", "win.view", Some(1i32)),
+            ("2", "win.view", Some(2i32)),
+            ("3", "win.view", Some(3i32)),
+            ("4", "win.view", Some(4i32)),
+        ] {
+            let shortcut = gtk::Shortcut::new(
+                gtk::ShortcutTrigger::parse_string(trigger),
+                Some(gtk::NamedAction::new(action)),
+            );
+            if let Some(n) = target {
+                shortcut.set_arguments(Some(&n.to_variant()));
+            }
+            keys.add_shortcut(shortcut);
+        }
+        self.add_controller(keys);
     }
 
     /// Route a page-level action to whichever page is visible.

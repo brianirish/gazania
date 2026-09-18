@@ -46,15 +46,7 @@ mod imp {
 
             let accels: &[(&str, &[&str])] = &[
                 ("app.quit", &["<Control>q"]),
-                ("win.back", &["Escape", "h"]),
                 ("win.refresh", &["<Control>r"]),
-                ("win.next", &["j"]),
-                ("win.prev", &["k"]),
-                ("win.activate", &["l"]),
-                ("win.view(1)", &["1"]),
-                ("win.view(2)", &["2"]),
-                ("win.view(3)", &["3"]),
-                ("win.view(4)", &["4"]),
                 ("win.cycle-view", &["<Control>Tab"]),
                 ("win.shortcuts", &["question"]),
             ];
