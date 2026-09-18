@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Zinnia
+Comment=Drives, volumes and disk usage
+Exec=zinnia-app %u
+Icon=io.github.brianirish.Zinnia
+Terminal=false
+Type=Application
+Categories=System;Utility;GTK;
+Keywords=disk;drive;volume;usage;storage;
+StartupNotify=true
