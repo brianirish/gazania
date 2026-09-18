@@ -1,29 +1,28 @@
 # Maintainer: Brian Irish <irishb@gmail.com>
-pkgname=zinnia-disk
-_pkgname=zinnia
+pkgname=gazania
 pkgver=0.1.0
 pkgrel=1
 pkgdesc="Drives, volumes and disk usage: a GTK4 disk hub with a CLI twin"
 arch=('x86_64')
-url="https://github.com/brianirish/zinnia"
+url="https://github.com/brianirish/gazania"
 license=('MIT')
 options=(!debug)
 depends=('gtk4' 'libadwaita' 'udisks2' 'hicolor-icon-theme')
 makedepends=('rust' 'meson' 'ninja' 'blueprint-compiler')
-source=("$_pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
 sha256sums=('a91ebaadac6a708d858068c540030cc160a313e64e5c9deed0bdb5a770f16990')
 
 prepare() {
-  cd "$_pkgname-$pkgver"
+  cd "$pkgname-$pkgver"
   cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
 }
 
 build() {
-  arch-meson "$_pkgname-$pkgver" build
+  arch-meson "$pkgname-$pkgver" build
   meson compile -C build
 }
 
 package() {
   meson install -C build --destdir "$pkgdir"
-  install -Dm644 "$_pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

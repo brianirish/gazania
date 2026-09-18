@@ -18,7 +18,7 @@ body:
     id: versions
     attributes:
       label: Versions
-      description: Output of `zinnia --version`, `pacman -Q gtk4 libadwaita udisks2` and `uname -r`.
+      description: Output of `gazania --version`, `pacman -Q gtk4 libadwaita udisks2` and `uname -r`.
       render: text
     validations:
       required: true
@@ -26,11 +26,11 @@ body:
     id: volumes
     attributes:
       label: What the engine sees
-      description: Output of `zinnia volumes --json`. Please redact drive serial numbers before posting.
+      description: Output of `gazania volumes --json`. Please redact drive serial numbers before posting.
       render: json
   - type: textarea
     id: logs
     attributes:
       label: Relevant output
-      description: Run `zinnia-app` from a terminal and paste anything it prints, or the CLI's stderr.
+      description: Run `gazania-app` from a terminal and paste anything it prints, or the CLI's stderr.
       render: text

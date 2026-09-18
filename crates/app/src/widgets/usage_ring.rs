@@ -19,7 +19,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for UsageRing {
-        const NAME: &'static str = "ZinniaUsageRing";
+        const NAME: &'static str = "GazaniaUsageRing";
         type Type = super::UsageRing;
         type ParentType = gtk::Widget;
 

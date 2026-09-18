@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="zinnia">
-  <schema id="io.github.brianirish.Zinnia" path="/io/github/brianirish/Zinnia/">
+<schemalist gettext-domain="gazania">
+  <schema id="io.github.brianirish.Gazania" path="/io/github/brianirish/Gazania/">
     <key name="window-width" type="i">
       <default>900</default>
       <summary>Window width</summary>

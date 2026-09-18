@@ -4,10 +4,10 @@ use crate::widgets::geometry::fraction;
 use crate::widgets::usage_ring::UsageRing;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gazania_core::format::human_size;
+use gazania_core::{Drive, Volume};
 use gtk::glib;
 use std::cell::RefCell;
-use zinnia_core::format::human_size;
-use zinnia_core::{Drive, Volume};
 
 mod imp {
     use super::*;
@@ -20,7 +20,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for VolumeRow {
-        const NAME: &'static str = "ZinniaVolumeRow";
+        const NAME: &'static str = "GazaniaVolumeRow";
         type Type = super::VolumeRow;
         type ParentType = adw::ActionRow;
     }

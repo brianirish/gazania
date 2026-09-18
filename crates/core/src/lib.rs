@@ -1,4 +1,4 @@
-//! zinnia core: drives, volumes, and later scanning, health and benchmarks.
+//! gazania core: drives, volumes, and later scanning, health and benchmarks.
 //! No GTK or GLib dependency lives here.
 
 pub mod bench;

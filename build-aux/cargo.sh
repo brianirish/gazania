@@ -18,5 +18,5 @@ if [[ $profile == release ]]; then
 else
   cargo build --workspace --locked
 fi
-cp "$target/$profile/zinnia" "$outdir/zinnia"
-cp "$target/$profile/zinnia-app" "$outdir/zinnia-app"
+cp "$target/$profile/gazania" "$outdir/gazania"
+cp "$target/$profile/gazania-app" "$outdir/gazania-app"

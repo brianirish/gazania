@@ -3,7 +3,7 @@ mod table;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "zinnia", version, about = "Disk hub for Arch Linux")]
+#[command(name = "gazania", version, about = "Disk hub for Arch Linux")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -28,7 +28,7 @@ fn main() {
 }
 
 fn run_volumes(json: bool) -> i32 {
-    match zbus::block_on(zinnia_core::volumes::list_volumes()) {
+    match zbus::block_on(gazania_core::volumes::list_volumes()) {
         Ok(report) => {
             if let Some(reason) = &report.fallback_reason {
                 eprintln!("note: udisks2 unavailable ({reason}); drive grouping is off");
@@ -44,7 +44,7 @@ fn run_volumes(json: bool) -> i32 {
             if json {
                 println!("[]");
             }
-            eprintln!("zinnia: {e}");
+            eprintln!("gazania: {e}");
             1
         }
     }

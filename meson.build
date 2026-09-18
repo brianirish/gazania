@@ -1,4 +1,4 @@
-project('zinnia',
+project('gazania',
   version: '0.1.0',
   meson_version: '>= 1.0.0',
   license: 'MIT',
@@ -8,14 +8,14 @@ gnome = import('gnome')
 find_program('cargo', required: true)
 find_program('blueprint-compiler', required: true)
 
-app_id = 'io.github.brianirish.Zinnia'
+app_id = 'io.github.brianirish.Gazania'
 cargo_target_dir = meson.project_build_root() / 'cargo-target'
 cargo_profile = get_option('buildtype') == 'debug' ? 'debug' : 'release'
 
 custom_target('cargo-build',
   build_by_default: true,
   build_always_stale: true,
-  output: ['zinnia', 'zinnia-app'],
+  output: ['gazania', 'gazania-app'],
   console: true,
   install: true,
   install_dir: get_option('bindir'),

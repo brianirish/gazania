@@ -1,8 +1,8 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $ZinniaWindow : Adw.ApplicationWindow {
-  title: "Zinnia";
+template $GazaniaWindow : Adw.ApplicationWindow {
+  title: "Gazania";
   default-width: 900;
   default-height: 640;
   width-request: 360;
@@ -10,7 +10,7 @@ template $ZinniaWindow : Adw.ApplicationWindow {
 
   content: Adw.ToastOverlay toasts {
     Adw.NavigationView navigation {
-      $ZinniaOverviewPage overview {}
+      $GazaniaOverviewPage overview {}
     }
   };
 }

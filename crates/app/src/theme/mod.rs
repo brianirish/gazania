@@ -48,7 +48,7 @@ pub fn install(app: &Application) {
             ));
             app.imp().theme_monitor.replace(Some(monitor));
         }
-        Err(e) => glib::g_debug!("zinnia", "theme monitor unavailable: {e}"),
+        Err(e) => glib::g_debug!("gazania", "theme monitor unavailable: {e}"),
     }
 }
 
@@ -65,7 +65,7 @@ fn apply(app: &Application, provider: &gtk::CssProvider, colors: &PathBuf) {
             provider.load_from_string("");
             app.imp().palette.replace(None);
             glib::g_debug!(
-                "zinnia",
+                "gazania",
                 "omarchy colors unreadable at {}, using stock look",
                 colors.display()
             );

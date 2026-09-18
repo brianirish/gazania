@@ -26,11 +26,11 @@ fn main() {
     assert!(status.success(), "blueprint-compiler failed");
 
     println!("cargo:rerun-if-changed=src/ui");
-    println!("cargo:rerun-if-changed=resources/zinnia.gresource.xml");
+    println!("cargo:rerun-if-changed=resources/gazania.gresource.xml");
     println!("cargo:rerun-if-changed=src/style.css");
     glib_build_tools::compile_resources(
         &[ui_out.to_str().unwrap(), "src", "resources"],
-        "resources/zinnia.gresource.xml",
-        "zinnia.gresource",
+        "resources/gazania.gresource.xml",
+        "gazania.gresource",
     );
 }
