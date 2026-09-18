@@ -10,7 +10,7 @@ options=(!debug)
 depends=('gtk4' 'libadwaita' 'udisks2' 'hicolor-icon-theme')
 makedepends=('rust' 'meson' 'ninja' 'blueprint-compiler')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
-sha256sums=('a91ebaadac6a708d858068c540030cc160a313e64e5c9deed0bdb5a770f16990')
+sha256sums=('066ef8ea2ce8d98dfc95410f6777491c5809268f0676058dec7f2a65dd5d008a')
 
 prepare() {
   cd "$pkgname-$pkgver"
