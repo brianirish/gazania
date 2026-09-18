@@ -1,7 +1,8 @@
 # diskhub: shell and volumes overview (sub-project 1)
 
 Date: 2026-09-18
-Status: approved design, awaiting implementation plan
+Status: approved design; implementation plan at
+`docs/superpowers/plans/2026-09-18-diskhub-shell-and-volumes.md`
 
 `diskhub` is a placeholder name. Rename with a find-and-replace across the
 repo before the first public push.
@@ -76,9 +77,10 @@ libadwaita 1.9, udisks2 2.11, Rust stable (the `rust` package on Arch, or rustup
 Modules: `volumes` (this spec), and empty `scan`, `health`, `bench` modules
 reserved for later sub-projects so the layout does not shift.
 
-Crates: `zbus` and `udisks2` for D-Bus, `rustix` for statvfs, `serde` and
-`serde_json`, `thiserror`, `tokio` for the async D-Bus client and the change
-stream. No GTK, no glib.
+Crates: `zbus` (its built-in async-io executor, no tokio) and `zvariant` for
+D-Bus, `rustix` for statvfs, `serde` and `serde_json`, `thiserror`,
+`futures-lite` for the change stream. No GTK, no glib. `human_size` lives in
+core's `format` module so the CLI and the app share it.
 
 Rule: core never panics on filesystem or D-Bus oddities. Every public function
 returns `Result<_, Error>` with a typed `Error` enum.
@@ -138,7 +140,7 @@ Sub-projects add actions, never key handlers.
 | `Ctrl+Tab` | cycle views |
 | `Ctrl+R` | refresh the current page |
 | `/` | focus the filter on pages that have one (none in this sub-project) |
-| `?` | open the shortcuts window |
+| `?` | open the shortcuts dialog (`adw::ShortcutsDialog`, built in code) |
 | `Ctrl+Q` | quit |
 
 `j` `k` `h` `l` are suppressed while a text entry has focus.
@@ -223,8 +225,11 @@ Primary: udisks2 on the system bus.
 - Enumerate `org.freedesktop.UDisks2.Drive` objects for Drives.
 - Enumerate `org.freedesktop.UDisks2.Block` objects. Keep those that expose
   `org.freedesktop.UDisks2.Filesystem` or are partitions with no filesystem.
-  Drop objects with `HintIgnore = true`, and device names starting with
-  `loop` or `zram`.
+  Drop hint-ignore objects only when they have no mount points: udisks2 flags
+  the mounted `/boot` ESP and the unmounted Windows recovery partition alike.
+  Drop blocks with the `Encrypted` interface (their cleartext block is the
+  volume) or the `Swapspace` interface, and device names starting with `loop`
+  or `zram`.
 - Attribute a block to a Drive through its `Drive` property. For a block whose
   `CryptoBackingDevice` is set, walk to the backing block and use its Drive,
   so `/dev/mapper/root` lands on the Samsung NVMe. Set `encrypted = true` and
@@ -247,8 +252,9 @@ Fallback, when the system bus or udisks2 is unreachable:
   device name and `transport = Unknown`.
 - Core reports which mode produced the result so the app can show a banner.
 
-The udisks2 client sits behind a `BlockSource` trait so tests can inject
-fixtures.
+The udisks2 client flattens one `GetManagedObjects` reply into a plain
+`Snapshot` value; the grouping logic takes that value, so tests build one by
+hand instead of mocking D-Bus.
 
 ### Liveness
 
@@ -305,12 +311,11 @@ subtitle.
 DEVICE            FS     SIZE    USED    AVAIL   USE%  MOUNTS
 /dev/mapper/root  btrfs  475G    164G    311G    35%   /, /home, /var/cache/pacman/pkg, /var/log
 /dev/nvme0n1p1    vfat   2.0G    219M    1.8G    11%   /boot
-/dev/sda1         ntfs   446.7G  -       -       -     not mounted
-/dev/sda2         ntfs   450M    -       -       -     not mounted
+/dev/sda1         ntfs   447G    -       -       -     not mounted
 ```
 
-Sizes are human-readable in the table. `--json` emits `Vec<Drive>` with raw
-byte counts.
+Sizes are human-readable in the table, 1024-based, one decimal below ten
+units and integers above. `--json` emits `Vec<Drive>` with raw byte counts.
 
 ## Error handling
 
@@ -325,18 +330,19 @@ byte counts.
 
 Core:
 
-- `BlockSource` fixture reproducing the reference machine: Samsung NVMe with
+- `Snapshot` fixture reproducing the reference machine: Samsung NVMe with
   a vfat boot partition and a LUKS partition whose cleartext block is btrfs
   with four mount points; Crucial SATA with two unmounted NTFS partitions; a
-  zram block that must be dropped. Assert two Drives, one btrfs Volume with
+  zram block and a loop block that must be dropped, and the hint-ignore but
+  mounted `/boot` that must be kept. Assert two Drives, one btrfs Volume with
   four mount points, `encrypted = true`, correct backing device.
 - mountinfo parser tested against captured text from the reference machine.
 - Fallback grouping tested on the same captured text: one Volume for
   `/dev/mapper/root`.
 - statvfs is exercised against a tempdir, asserting `used + available <= size`.
 
-CLI: snapshot tests of `--json` and the table against the fixture, with the
-`BlockSource` injected.
+CLI: unit tests of the JSON and table renderers against a hand-built Drive
+tree.
 
 App: `UsageRing` arc geometry unit tests. Build in CI. Manual run for the UI.
 
