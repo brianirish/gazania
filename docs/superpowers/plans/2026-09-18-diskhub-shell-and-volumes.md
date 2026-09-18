@@ -582,6 +582,13 @@ mod tests {
         let text = "\n1 0 8:1 / / rw - ext4 /dev/sda1 rw\n\n";
         assert_eq!(parse(text).unwrap().len(), 1);
     }
+
+    #[test]
+    fn backslash_before_multibyte_char_is_kept_verbatim_without_panicking() {
+        let line = "1 0 8:1 / /mnt/x\\𐍈 rw - ext4 /dev/sdb1 rw\n";
+        let entries = parse(line).unwrap();
+        assert_eq!(entries[0].mount_point, PathBuf::from("/mnt/x\\𐍈"));
+    }
 }
 ```
 
@@ -675,9 +682,10 @@ fn unescape(s: &str) -> String {
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
-        if bytes[i] == b'\\' && i + 4 <= bytes.len() {
-            let oct = &s[i + 1..i + 4];
-            if let Ok(v) = u8::from_str_radix(oct, 8) {
+        if bytes[i] == b'\\' {
+            // `get` returns None off a char boundary, so a stray backslash before
+            // multi-byte text is copied through instead of panicking.
+            if let Some(v) = s.get(i + 1..i + 4).and_then(|oct| u8::from_str_radix(oct, 8).ok()) {
                 out.push(v);
                 i += 4;
                 continue;
@@ -693,7 +701,7 @@ fn unescape(s: &str) -> String {
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `cargo test -p diskhub-core mountinfo`
-Expected: 6 passed.
+Expected: 7 passed.
 
 - [ ] **Step 6: Commit**
 
