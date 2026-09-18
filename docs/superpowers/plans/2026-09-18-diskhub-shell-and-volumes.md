@@ -3416,8 +3416,10 @@ impl VolumeRow {
         row.set_activatable(true);
         row.set_title(&volume.label.clone().unwrap_or_else(|| volume.device.display().to_string()));
 
+        // With no mount points the subtitle carries the size instead, since the
+        // right-hand label reads "Not mounted".
         let mounts = if volume.mount_points.is_empty() {
-            "Not mounted".to_string()
+            human_size(volume.size)
         } else {
             volume
                 .mount_points
@@ -3441,7 +3443,7 @@ impl VolumeRow {
 
         let usage = match volume.usage {
             Some(u) => format!("{} of {}", human_size(u.used), human_size(volume.size)),
-            None => human_size(volume.size),
+            None => "Not mounted".to_string(),
         };
         let label = gtk::Label::new(Some(&usage));
         label.add_css_class("dim-label");
@@ -3695,22 +3697,24 @@ impl OverviewPage {
         self.imp().timer.replace(Some(id));
     }
 
+    /// The future holds the page weakly and upgrades per event, so it never
+    /// keeps the page alive on its own and ends when the page is dropped.
     fn start_watch(&self) {
-        glib::spawn_future_local(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            async move {
-                let Ok(conn) = volumes::udisks::connect().await else {
-                    return;
+        let weak = self.downgrade();
+        glib::spawn_future_local(async move {
+            let Ok(conn) = volumes::udisks::connect().await else {
+                return;
+            };
+            let Ok(mut changes) = volumes::watch(&conn).await else {
+                return;
+            };
+            while changes.next().await.is_some() {
+                let Some(page) = weak.upgrade() else {
+                    break;
                 };
-                let Ok(mut changes) = volumes::watch(&conn).await else {
-                    return;
-                };
-                while changes.next().await.is_some() {
-                    page.schedule_reload();
-                }
+                page.schedule_reload();
             }
-        ));
+        });
     }
 
     /// Collapse bursts of udisks2 signals into one reload.
@@ -3783,7 +3787,7 @@ Add `mod pages;` to `crates/app/src/main.rs`.
 
 Run: `cargo build -p zinnia-app && ./scripts/dev-run.sh`
 Expected:
-- A brief spinner, then two groups: `Crucial_CT480M500SSD1` with `SATA · 447G` and one row `SSD_480GB` reading `ntfs · Not mounted`, ring empty; `Samsung SSD 960 PRO 512GB` with `NVMe · 477G` and two rows: `/dev/mapper/root` with `btrfs · /, /home, /var/cache/pacman/pkg, /var/log`, a lock icon, a ring about a third full in the accent color, and `/dev/nvme0n1p1` with `vfat · /boot`.
+- A brief spinner, then two groups: `Crucial_CT480M500SSD1` with `SATA · 447G` and one row `SSD_480GB` reading `ntfs · 447G` with `Not mounted` on the right, ring empty; `Samsung SSD 960 PRO 512GB` with `NVMe · 477G` and two rows: `/dev/mapper/root` with `btrfs · /, /home, /var/cache/pacman/pkg, /var/log`, a lock icon, a ring about a third full in the accent color, and `/dev/nvme0n1p1` with `vfat · /boot`.
 - `j` and `k` move focus between rows across both groups; `l` and `Enter` show an `Opening /dev/...` toast; clicking a row does the same.
 - `Ctrl+R` reloads without flashing the spinner.
 - In another terminal, `truncate -s 16M /tmp/zinnia-loop.img && udisksctl loop-setup -f /tmp/zinnia-loop.img`: the list reloads within about a second and shows no new row (loop devices are filtered). `udisksctl loop-delete -b /dev/loopN` reloads again.
