@@ -2894,7 +2894,7 @@ Add to `impl Window`:
             return;
         };
         let _ = &page;
-        self.toast(&format!("{action:?} does nothing on this page yet"));
+        glib::g_debug!("zinnia", "unhandled page action {action:?}");
     }
 ```
 
@@ -2941,7 +2941,7 @@ Add `mod shortcuts;` to `crates/app/src/main.rs`.
 Run: `cargo build -p zinnia-app && ./scripts/dev-run.sh`
 Expected, in the window:
 - `?` opens a shortcuts dialog with three sections; `Escape` closes it.
-- `Ctrl+R` shows a toast reading `Refresh does nothing on this page yet`; `j`, `k`, `l`, `1`, `Ctrl+Tab` show matching toasts.
+- `Ctrl+R`, `j`, `k`, `l`, `1` and `Ctrl+Tab` do nothing visible on the placeholder page; each logs a debug line until Tasks 13 and 14 route them.
 - `Escape` and `h` on the root page do nothing visible.
 - `Ctrl+Q` quits.
 
@@ -3811,7 +3811,7 @@ In `crates/app/src/window.rs`:
             }
             return;
         }
-        self.toast(&format!("{action:?} does nothing on this page yet"));
+        glib::g_debug!("zinnia", "unhandled page action {action:?}");
     }
 ```
 
