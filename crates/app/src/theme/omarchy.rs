@@ -13,7 +13,7 @@ pub struct Rgb {
 impl Rgb {
     pub fn parse(hex: &str) -> Option<Rgb> {
         let hex = hex.trim().strip_prefix('#')?;
-        if hex.len() != 6 {
+        if hex.len() != 6 || !hex.is_ascii() {
             return None;
         }
         let channel = |i: usize| u8::from_str_radix(&hex[i..i + 2], 16).ok();
@@ -126,5 +126,12 @@ brown = "#75493d"
     fn luminance_is_relative_luminance() {
         assert!((Rgb { r: 255, g: 255, b: 255 }.luminance() - 1.0).abs() < 1e-6);
         assert!(Rgb { r: 0, g: 0, b: 0 }.luminance().abs() < 1e-6);
+    }
+
+    #[test]
+    fn non_ascii_hex_is_rejected_without_panicking() {
+        assert_eq!(Rgb::parse("#€234"), None);
+        assert_eq!(Rgb::parse("#ééé"), None);
+        assert!(parse("accent = \"#€234\"").is_none());
     }
 }
