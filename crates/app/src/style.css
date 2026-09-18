@@ -1,1 +1,13 @@
 /* App-level styles. Widget classes are added by the tasks that introduce them. */
+
+usage-ring {
+  color: var(--accent-color);
+}
+
+usage-ring.warning {
+  color: var(--warning-color);
+}
+
+usage-ring.error {
+  color: var(--error-color);
+}
