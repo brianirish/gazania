@@ -1,6 +1,6 @@
-# Zinnia
+# Gazania
 
-[![CI](https://github.com/brianirish/zinnia/actions/workflows/ci.yml/badge.svg)](https://github.com/brianirish/zinnia/actions/workflows/ci.yml)
+[![CI](https://github.com/brianirish/gazania/actions/workflows/ci.yml/badge.svg)](https://github.com/brianirish/gazania/actions/workflows/ci.yml)
 
 A disk hub for Arch Linux: the speed, scriptability and keyboard flow of
 terminal tools with the polish of a native GTK4 and libadwaita app.
@@ -14,7 +14,7 @@ terminal tools with the polish of a native GTK4 and libadwaita app.
 - **Drive page.** Full details for a volume: model, serial, transport,
   filesystem, UUID, encryption, size, used, available, and every mount point
   with its options.
-- **`zinnia` CLI.** `zinnia volumes` prints a table; `zinnia volumes --json`
+- **`gazania` CLI.** `gazania volumes` prints a table; `gazania volumes --json`
   prints the same data for scripts.
 - **Omarchy aware.** On Omarchy the accent follows the active theme and
   updates live when you switch themes.

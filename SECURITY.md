@@ -9,7 +9,7 @@ The latest commit on `main` and the latest tagged release are supported.
 Please **do not** open a public issue for security problems. Use GitHub's
 private vulnerability reporting instead:
 
-**[Report a vulnerability](https://github.com/brianirish/zinnia/security/advisories/new)**
+**[Report a vulnerability](https://github.com/brianirish/gazania/security/advisories/new)**
 
 You should get a response within a week. Please include reproduction steps
 and the output of `pacman -Q gtk4 libadwaita udisks2`.
@@ -24,5 +24,5 @@ and the output of `pacman -Q gtk4 libadwaita udisks2`.
   from `statvfs`. Nothing is written to devices.
 - On Omarchy the app reads the active theme's `colors.toml` from the user's
   own state directory. Malformed input falls back to the stock look.
-- No network access, no secrets. Note that `zinnia volumes --json` includes
+- No network access, no secrets. Note that `gazania volumes --json` includes
   drive serial numbers; redact them before pasting output publicly.

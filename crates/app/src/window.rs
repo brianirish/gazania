@@ -19,7 +19,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, CompositeTemplate)]
-    #[template(resource = "/io/github/brianirish/Zinnia/window.ui")]
+    #[template(resource = "/io/github/brianirish/Gazania/window.ui")]
     pub struct Window {
         #[template_child]
         pub navigation: TemplateChild<adw::NavigationView>,
@@ -31,7 +31,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for Window {
-        const NAME: &'static str = "ZinniaWindow";
+        const NAME: &'static str = "GazaniaWindow";
         type Type = super::Window;
         type ParentType = adw::ApplicationWindow;
 
@@ -175,6 +175,6 @@ impl Window {
             }
             return;
         }
-        glib::g_debug!("zinnia", "unhandled page action {action:?}");
+        glib::g_debug!("gazania", "unhandled page action {action:?}");
     }
 }

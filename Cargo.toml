@@ -6,14 +6,14 @@ members = ["crates/core", "crates/cli", "crates/app"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/brianirish/zinnia"
+repository = "https://github.com/brianirish/gazania"
 description = "Disk hub for Arch Linux: drives, volumes and usage in a GTK4 app with a CLI twin"
 readme = "README.md"
 keywords = ["disk", "storage", "gtk4", "libadwaita", "udisks2"]
 categories = ["filesystem", "gui", "command-line-utilities"]
 
 [workspace.dependencies]
-zinnia-core = { path = "crates/core" }
+gazania-core = { path = "crates/core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

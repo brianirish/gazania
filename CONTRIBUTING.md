@@ -1,14 +1,14 @@
 # Contributing
 
-Thanks for helping build Zinnia.
+Thanks for helping build Gazania.
 
 ## Development setup
 
 Arch Linux (Omarchy or plain) with `rust`, `meson`, `ninja`,
 `blueprint-compiler`, `gtk4`, `libadwaita` and `udisks2` installed:
 
-    git clone https://github.com/brianirish/zinnia.git
-    cd zinnia
+    git clone https://github.com/brianirish/gazania.git
+    cd gazania
     cargo test --workspace
     ./scripts/dev-run.sh        # runs the app from the tree with its gschema
 
@@ -16,8 +16,8 @@ Arch Linux (Omarchy or plain) with `rust`, `meson`, `ninja`,
 
 - `crates/core` is the engine and has no GTK dependency. Everything that can
   be unit tested lives here, with fixtures next to the tests.
-- `crates/cli` is `zinnia`, a thin clap wrapper over core.
-- `crates/app` is `zinnia-app`, GTK4 + libadwaita. UI files are Blueprint
+- `crates/cli` is `gazania`, a thin clap wrapper over core.
+- `crates/app` is `gazania-app`, GTK4 + libadwaita. UI files are Blueprint
   under `src/ui/`; widgets are `glib::Object` subclasses.
 - `docs/superpowers/specs/` holds the design docs. Larger changes start with
   a spec there before code.

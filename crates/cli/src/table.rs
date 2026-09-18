@@ -1,7 +1,7 @@
 //! Text renderers for the volumes report.
 
-use zinnia_core::format::human_size;
-use zinnia_core::{Drive, Volume};
+use gazania_core::format::human_size;
+use gazania_core::{Drive, Volume};
 
 const HEADER: [&str; 7] = ["DEVICE", "FS", "SIZE", "USED", "AVAIL", "USE%", "MOUNTS"];
 
@@ -79,8 +79,8 @@ fn percent(used: u64, available: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gazania_core::{MountPoint, Transport, Usage, Volume};
     use std::path::PathBuf;
-    use zinnia_core::{MountPoint, Transport, Usage, Volume};
 
     const G: u64 = 1024 * 1024 * 1024;
 

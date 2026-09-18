@@ -6,12 +6,12 @@ use crate::window::Window;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use futures_lite::StreamExt;
+use gazania_core::format::human_size;
+use gazania_core::volumes::{self, Source, VolumesReport};
+use gazania_core::{Drive, Transport};
 use gtk::{glib, CompositeTemplate};
 use std::cell::{Cell, RefCell};
 use std::time::Duration;
-use zinnia_core::format::human_size;
-use zinnia_core::volumes::{self, Source, VolumesReport};
-use zinnia_core::{Drive, Transport};
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 const DEBOUNCE: Duration = Duration::from_millis(300);
@@ -21,7 +21,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, CompositeTemplate)]
-    #[template(resource = "/io/github/brianirish/Zinnia/overview_page.ui")]
+    #[template(resource = "/io/github/brianirish/Gazania/overview_page.ui")]
     pub struct OverviewPage {
         #[template_child]
         pub banner: TemplateChild<adw::Banner>,
@@ -40,7 +40,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for OverviewPage {
-        const NAME: &'static str = "ZinniaOverviewPage";
+        const NAME: &'static str = "GazaniaOverviewPage";
         type Type = super::OverviewPage;
         type ParentType = adw::NavigationPage;
 

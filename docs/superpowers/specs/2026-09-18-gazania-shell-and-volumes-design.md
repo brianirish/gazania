@@ -1,11 +1,11 @@
-# zinnia: shell and volumes overview (sub-project 1)
+# gazania: shell and volumes overview (sub-project 1)
 
 Date: 2026-09-18
 Status: approved design; implementation plan at
-`docs/superpowers/plans/2026-09-18-zinnia-shell-and-volumes.md`
+`docs/superpowers/plans/2026-09-18-gazania-shell-and-volumes.md`
 
-Name: Zinnia, chosen 2026-09-18. Crates `zinnia-core`, `zinnia-cli`, `zinnia-app`;
-binaries `zinnia` and `zinnia-app`; app id `io.github.brianirish.Zinnia`.
+Name: Gazania, chosen 2026-09-18. Crates `gazania-core`, `gazania-cli`, `gazania-app`;
+binaries `gazania` and `gazania-app`; app id `io.github.brianirish.Gazania`.
 
 ## Purpose
 
@@ -38,7 +38,7 @@ In:
 - Optional live theming from Omarchy's active theme colors.
 - Volumes overview as the home page, with a usage ring per volume.
 - Drive page with a Details view and three placeholder views.
-- `zinnia volumes` CLI with table and `--json` output.
+- `gazania volumes` CLI with table and `--json` output.
 
 Out, each to be specced separately:
 
@@ -52,16 +52,16 @@ Out, each to be specced separately:
 ## Workspace
 
 ```
-zinnia/
+gazania/
   Cargo.toml                 workspace
   crates/
-    core/                    zinnia-core, library, no GTK
-    cli/                     zinnia-cli, binary `zinnia`
-    app/                     zinnia-app, binary `zinnia-app`
+    core/                    gazania-core, library, no GTK
+    cli/                     gazania-cli, binary `gazania`
+    app/                     gazania-app, binary `gazania-app`
   data/
-    io.github.brianirish.Zinnia.desktop.in
-    io.github.brianirish.Zinnia.metainfo.xml.in
-    io.github.brianirish.Zinnia.gschema.xml
+    io.github.brianirish.Gazania.desktop.in
+    io.github.brianirish.Gazania.metainfo.xml.in
+    io.github.brianirish.Gazania.gschema.xml
     icons/                   scalable app icon and symbolic icon
   meson.build                wraps cargo, installs data/
   packaging/PKGBUILD
@@ -147,7 +147,7 @@ Sub-projects add actions, never key handlers.
 
 ### Window and application state
 
-`gtk::Application` with the id `io.github.brianirish.Zinnia`, which gives
+`gtk::Application` with the id `io.github.brianirish.Gazania`, which gives
 single-instance behavior: a second launch focuses the running window.
 
 Persisted in gschema: `window-width`, `window-height`, `is-maximized`.
@@ -215,7 +215,7 @@ pub struct MountPoint { pub path: PathBuf, pub options: Vec<String> }
 ```
 
 All types derive `Serialize`, `Deserialize`, `Clone`, `Debug`, `PartialEq`.
-The JSON emitted by `zinnia volumes --json` is exactly `Vec<Drive>`, and is
+The JSON emitted by `gazania volumes --json` is exactly `Vec<Drive>`, and is
 the contract the app consumes.
 
 ### Sourcing
@@ -305,7 +305,7 @@ subtitle.
 
 ### CLI
 
-`zinnia volumes` prints:
+`gazania volumes` prints:
 
 ```
 DEVICE            FS     SIZE    USED    AVAIL   USE%  MOUNTS

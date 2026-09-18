@@ -3,11 +3,11 @@
 use crate::window::Window;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gazania_core::format::human_size;
+use gazania_core::volumes;
+use gazania_core::{Drive, Volume};
 use gtk::{glib, CompositeTemplate};
 use std::cell::RefCell;
-use zinnia_core::format::human_size;
-use zinnia_core::volumes;
-use zinnia_core::{Drive, Volume};
 
 const VIEWS: [&str; 4] = ["usage", "health", "benchmark", "details"];
 
@@ -15,7 +15,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, CompositeTemplate)]
-    #[template(resource = "/io/github/brianirish/Zinnia/drive_page.ui")]
+    #[template(resource = "/io/github/brianirish/Gazania/drive_page.ui")]
     pub struct DrivePage {
         #[template_child]
         pub views: TemplateChild<adw::ViewStack>,
@@ -31,7 +31,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for DrivePage {
-        const NAME: &'static str = "ZinniaDrivePage";
+        const NAME: &'static str = "GazaniaDrivePage";
         type Type = super::DrivePage;
         type ParentType = adw::NavigationPage;
 
