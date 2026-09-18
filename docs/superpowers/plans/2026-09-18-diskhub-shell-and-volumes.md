@@ -2745,7 +2745,7 @@ trap 'rm -rf "$schemas"' EXIT
 cp "$root/data/io.github.brianirish.Zinnia.gschema.xml" "$schemas/"
 glib-compile-schemas "$schemas"
 cd "$root"
-GSETTINGS_SCHEMA_DIR="$schemas" exec cargo run -p zinnia-app -- "$@"
+GSETTINGS_SCHEMA_DIR="$schemas" cargo run -p zinnia-app -- "$@"
 ```
 
 - [ ] **Step 5: Build and run**
