@@ -121,6 +121,12 @@ impl OverviewPage {
             }
         }
 
+        // A rebuild destroys the focused row, so remember which volume had
+        // focus and restore it on the row that replaces it.
+        let focused_id = self
+            .focused_index()
+            .and_then(|i| imp.rows.borrow().get(i).map(|r| r.volume().id));
+
         while let Some(child) = imp.groups.first_child() {
             imp.groups.remove(&child);
         }
@@ -155,6 +161,18 @@ impl OverviewPage {
         } else {
             imp.stack.set_visible_child_name("list");
         }
+
+        if let Some(id) = focused_id {
+            let restore = imp
+                .rows
+                .borrow()
+                .iter()
+                .find(|row| row.volume().id == id)
+                .cloned();
+            if let Some(row) = restore {
+                row.grab_focus();
+            }
+        }
     }
 
     fn show_error(&self, message: &str) {
@@ -185,27 +203,29 @@ impl OverviewPage {
     }
 
     pub fn focus_next(&self) {
-        let rows = self.imp().rows.borrow();
-        if rows.is_empty() {
+        let len = self.imp().rows.borrow().len();
+        if len == 0 {
             return;
         }
         let next = self
             .focused_index()
-            .map(|i| (i + 1).min(rows.len() - 1))
+            .map(|i| (i + 1).min(len - 1))
             .unwrap_or(0);
-        rows[next].grab_focus();
+        let row = self.imp().rows.borrow()[next].clone();
+        row.grab_focus();
     }
 
     pub fn focus_prev(&self) {
-        let rows = self.imp().rows.borrow();
-        if rows.is_empty() {
+        let len = self.imp().rows.borrow().len();
+        if len == 0 {
             return;
         }
         let prev = self
             .focused_index()
             .map(|i| i.saturating_sub(1))
             .unwrap_or(0);
-        rows[prev].grab_focus();
+        let row = self.imp().rows.borrow()[prev].clone();
+        row.grab_focus();
     }
 
     pub fn activate_focused(&self) {
