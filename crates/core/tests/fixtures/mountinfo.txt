@@ -1,0 +1,6 @@
+32 2 0:29 /@ / rw,relatime shared:1 - btrfs /dev/mapper/root rw,compress=zstd:3,ssd,space_cache=v2,subvolid=256,subvol=/@
+57 32 0:29 /@home /home rw,relatime shared:195 - btrfs /dev/mapper/root rw,compress=zstd:3,ssd,space_cache=v2,subvolid=257,subvol=/@home
+69 32 0:29 /@pkg /var/cache/pacman/pkg rw,relatime shared:201 - btrfs /dev/mapper/root rw,compress=zstd:3,ssd,space_cache=v2,subvolid=259,subvol=/@pkg
+103 32 0:29 /@log /var/log rw,relatime shared:207 - btrfs /dev/mapper/root rw,compress=zstd:3,ssd,space_cache=v2,subvolid=258,subvol=/@log
+249 32 259:1 / /boot rw,relatime shared:213 - vfat /dev/nvme0n1p1 rw,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro
+58 32 0:56 / /tmp rw,nosuid,nodev shared:189 - tmpfs tmpfs rw,size=16385808k,nr_inodes=1048576,inode64,huge=advise,usrquota
