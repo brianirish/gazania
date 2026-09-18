@@ -3843,8 +3843,6 @@ using Gtk 4.0;
 using Adw 1;
 
 template $ZinniaDrivePage : Adw.NavigationPage {
-  tag: "drive";
-
   child: Adw.ToolbarView {
     [top]
     Adw.HeaderBar {
@@ -3869,9 +3867,9 @@ template $ZinniaDrivePage : Adw.NavigationPage {
       Adw.ViewStackPage {
         name: "health";
         title: "Health";
-        icon-name: "emblem-ok-symbolic";
+        icon-name: "object-select-symbolic";
         child: Adw.StatusPage {
-          icon-name: "emblem-ok-symbolic";
+          icon-name: "object-select-symbolic";
           title: "Health";
           description: "Coming in a later release";
         };
@@ -3880,9 +3878,9 @@ template $ZinniaDrivePage : Adw.NavigationPage {
       Adw.ViewStackPage {
         name: "benchmark";
         title: "Benchmark";
-        icon-name: "utilities-system-monitor-symbolic";
+        icon-name: "power-profile-performance-symbolic";
         child: Adw.StatusPage {
-          icon-name: "utilities-system-monitor-symbolic";
+          icon-name: "power-profile-performance-symbolic";
           title: "Benchmark";
           description: "Coming in a later release";
         };
