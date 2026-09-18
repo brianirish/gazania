@@ -227,21 +227,19 @@ impl OverviewPage {
     }
 
     fn start_watch(&self) {
-        glib::spawn_future_local(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            async move {
-                let Ok(conn) = volumes::udisks::connect().await else {
-                    return;
-                };
-                let Ok(mut changes) = volumes::watch(&conn).await else {
-                    return;
-                };
-                while changes.next().await.is_some() {
-                    page.schedule_reload();
-                }
+        let weak = self.downgrade();
+        glib::spawn_future_local(async move {
+            let Ok(conn) = volumes::udisks::connect().await else {
+                return;
+            };
+            let Ok(mut changes) = volumes::watch(&conn).await else {
+                return;
+            };
+            while changes.next().await.is_some() {
+                let Some(page) = weak.upgrade() else { break };
+                page.schedule_reload();
             }
-        ));
+        });
     }
 
     /// Collapse bursts of udisks2 signals into one reload.
