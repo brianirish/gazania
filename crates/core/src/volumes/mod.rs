@@ -6,10 +6,13 @@ pub mod mountinfo;
 pub mod raw;
 pub mod udisks;
 pub mod usage;
+pub mod watch;
 
 use crate::error::{Error, Result};
 use crate::types::Drive;
 use std::path::Path;
+
+pub use watch::{watch, Change};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Source {
