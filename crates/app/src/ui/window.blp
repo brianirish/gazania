@@ -1,0 +1,30 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $ZinniaWindow : Adw.ApplicationWindow {
+  title: "Zinnia";
+  default-width: 900;
+  default-height: 640;
+  width-request: 360;
+  height-request: 300;
+
+  content: Adw.ToastOverlay toasts {
+    Adw.NavigationView navigation {
+      Adw.NavigationPage {
+        title: "Volumes";
+        tag: "overview";
+
+        child: Adw.ToolbarView {
+          [top]
+          Adw.HeaderBar {}
+
+          content: Adw.StatusPage {
+            icon-name: "drive-harddisk-symbolic";
+            title: "Volumes";
+            description: "The overview arrives in a later task";
+          };
+        };
+      }
+    }
+  };
+}
