@@ -4218,6 +4218,13 @@ brown = "#75493d"
         assert!((Rgb { r: 255, g: 255, b: 255 }.luminance() - 1.0).abs() < 1e-6);
         assert!(Rgb { r: 0, g: 0, b: 0 }.luminance().abs() < 1e-6);
     }
+
+    #[test]
+    fn non_ascii_hex_is_rejected_without_panicking() {
+        assert_eq!(Rgb::parse("#€234"), None);
+        assert_eq!(Rgb::parse("#ééé"), None);
+        assert!(parse("accent = \"#€234\"").is_none());
+    }
 }
 ```
 
@@ -4252,7 +4259,8 @@ pub struct Rgb {
 impl Rgb {
     pub fn parse(hex: &str) -> Option<Rgb> {
         let hex = hex.trim().strip_prefix('#')?;
-        if hex.len() != 6 {
+        // Byte-range slicing below is only safe on ASCII; the file is untrusted.
+        if hex.len() != 6 || !hex.is_ascii() {
             return None;
         }
         let channel = |i: usize| u8::from_str_radix(&hex[i..i + 2], 16).ok();
@@ -4294,7 +4302,10 @@ pub fn parse(text: &str) -> Option<Theme> {
 
 pub fn css(theme: &Theme) -> String {
     let accent = theme.accent.hex();
-    let fg = if theme.accent.luminance() > 0.179 { "#000000" } else { "#ffffff" };
+    // 0.5 rather than the WCAG crossover (0.179): GNOME puts white text on
+    // mid-tone accents such as the default blue, and only light accents get
+    // black. The two test fixtures pin that behaviour.
+    let fg = if theme.accent.luminance() > 0.5 { "#000000" } else { "#ffffff" };
     format!(
         ":root {{\n  --accent-bg-color: {accent};\n  --accent-fg-color: {fg};\n  --accent-color: {accent};\n}}\n"
     )
@@ -4304,7 +4315,7 @@ pub fn css(theme: &Theme) -> String {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `cargo test -p zinnia-app omarchy`
-Expected: 5 passed.
+Expected: 6 passed.
 
 - [ ] **Step 5: Install the provider and the directory monitor**
 
@@ -4709,6 +4720,371 @@ MIT, see `LICENSE`.
 ```bash
 git add data meson.build build-aux packaging .github README.md
 git commit -m "Add desktop data, meson build, PKGBUILD and CI
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 17: Open source hygiene for the public repository
+
+Added after the plan was approved, at the user's request ("push to a public
+GitHub repo ... follow all open source project best practices"). Modelled on
+the user's `omarchy-mouse-battery` repository.
+
+**Files:**
+- Create: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `CHANGELOG.md`, `.editorconfig`
+- Create: `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/ISSUE_TEMPLATE/feature_request.yml`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/dependabot.yml`
+- Modify: `.github/workflows/ci.yml`, `Cargo.toml`, `crates/core/Cargo.toml`, `crates/cli/Cargo.toml`, `crates/app/Cargo.toml`, `README.md`
+- Modify: every `.rs` file that `cargo fmt` or `cargo clippy` touches
+
+**Interfaces:**
+- Consumes: the finished workspace from Tasks 1 to 16.
+- Produces: a repository that passes `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings` and `cargo test --workspace`, with CI enforcing all three, and the community files GitHub recognises.
+
+- [ ] **Step 1: Format and lint the whole workspace**
+
+Run `cargo fmt --all`, then `cargo clippy --workspace --all-targets -- -D warnings` and fix every finding with the smallest change that keeps behaviour (for example `&PathBuf` parameters become `&Path`, needless borrows go, `impl Default` stays). Re-run `cargo test --workspace`. Commit the formatting on its own:
+
+```bash
+git add -A
+git commit -m "Run cargo fmt and satisfy clippy across the workspace
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+```
+
+- [ ] **Step 2: Enforce it in CI**
+
+Replace the `Test` step in `.github/workflows/ci.yml` with three steps, keeping the meson step after them:
+```yaml
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test --workspace --locked
+```
+
+- [ ] **Step 3: Crate metadata**
+
+In the root `Cargo.toml` `[workspace.package]` add:
+```toml
+description = "Disk hub for Arch Linux: drives, volumes and usage in a GTK4 app with a CLI twin"
+readme = "README.md"
+keywords = ["disk", "storage", "gtk4", "libadwaita", "udisks2"]
+categories = ["filesystem", "gui", "command-line-utilities"]
+```
+and in each crate manifest under `[package]` add `description.workspace = true`, `readme.workspace = true`, `keywords.workspace = true`, `categories.workspace = true`, `repository.workspace = true`.
+
+- [ ] **Step 4: Community files**
+
+`CONTRIBUTING.md`:
+```markdown
+# Contributing
+
+Thanks for helping build Zinnia.
+
+## Development setup
+
+Arch Linux (Omarchy or plain) with `rust`, `meson`, `ninja`,
+`blueprint-compiler`, `gtk4`, `libadwaita` and `udisks2` installed:
+
+    git clone https://github.com/brianirish/zinnia.git
+    cd zinnia
+    cargo test --workspace
+    ./scripts/dev-run.sh        # runs the app from the tree with its gschema
+
+## Layout
+
+- `crates/core` is the engine and has no GTK dependency. Everything that can
+  be unit tested lives here, with fixtures next to the tests.
+- `crates/cli` is `zinnia`, a thin clap wrapper over core.
+- `crates/app` is `zinnia-app`, GTK4 + libadwaita. UI files are Blueprint
+  under `src/ui/`; widgets are `glib::Object` subclasses.
+- `docs/superpowers/specs/` holds the design docs. Larger changes start with
+  a spec there before code.
+
+## Iterating
+
+- `cargo fmt --all` and `cargo clippy --workspace --all-targets -- -D warnings`
+  before opening a PR. CI runs both, plus `cargo test --workspace` and a
+  meson build.
+- Every behaviour change in `crates/core` comes with a test.
+- For UI changes, run the app and attach a screenshot
+  (`grim -o <output> shot.png` captures one monitor on Wayland).
+- Keep the keyboard model intact: new pages add named actions, never key
+  handlers. See `crates/app/src/application.rs` for the accel table.
+
+## Pull requests
+
+- One logical change per PR.
+- Update `CHANGELOG.md` under `Unreleased`.
+- Note the versions you tested on: `pacman -Q gtk4 libadwaita udisks2`.
+
+## Bugs and ideas
+
+Open an issue using the templates. For security problems, see
+[SECURITY.md](SECURITY.md) and do not open a public issue.
+```
+
+`CODE_OF_CONDUCT.md`:
+```markdown
+# Code of Conduct
+
+This project follows the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
+
+In short: be respectful, be constructive, and assume good faith. Harassment,
+personal attacks, and other unprofessional conduct are not tolerated in any
+project space (issues, pull requests, discussions).
+
+Instances of unacceptable behavior may be reported to the maintainer at
+**irishb@gmail.com**. All reports will be reviewed promptly and handled with
+discretion. Maintainers who do not follow or enforce the Code of Conduct may
+be permanently removed from the project.
+```
+
+`SECURITY.md`:
+```markdown
+# Security Policy
+
+## Supported versions
+
+The latest commit on `main` and the latest tagged release are supported.
+
+## Reporting a vulnerability
+
+Please **do not** open a public issue for security problems. Use GitHub's
+private vulnerability reporting instead:
+
+**[Report a vulnerability](https://github.com/brianirish/zinnia/security/advisories/new)**
+
+You should get a response within a week. Please include reproduction steps
+and the output of `pacman -Q gtk4 libadwaita udisks2`.
+
+## Threat model notes
+
+- Both binaries run as the logged-in user and never escalate. Privileged
+  storage operations are meant to go through udisks2 behind polkit; this
+  release performs none.
+- The app and CLI read from udisks2 over the system D-Bus (one
+  `GetManagedObjects` call plus signals), from `/proc/self/mountinfo`, and
+  from `statvfs`. Nothing is written to devices.
+- On Omarchy the app reads the active theme's `colors.toml` from the user's
+  own state directory. Malformed input falls back to the stock look.
+- No network access, no secrets. Note that `zinnia volumes --json` includes
+  drive serial numbers; redact them before pasting output publicly.
+```
+
+`CHANGELOG.md`:
+```markdown
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- `zinnia-core`: drives and volumes from udisks2 with btrfs subvolume
+  grouping, LUKS cleartext attribution, statvfs usage, a mountinfo-only
+  fallback, and a change stream for live refresh.
+- `zinnia volumes` CLI with a table view and `--json`.
+- `zinnia-app`: GTK4 + libadwaita shell with a volumes overview (usage ring
+  per volume), a per-volume page with Details, vim-flavored keyboard
+  navigation, and live accent theming from the active Omarchy theme.
+- meson build, PKGBUILD and CI on Arch Linux.
+```
+
+`.editorconfig`:
+```ini
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,toml,blp,xml,md,json}]
+indent_size = 2
+
+[Makefile]
+indent_style = tab
+```
+
+`.github/ISSUE_TEMPLATE/bug_report.yml`:
+```yaml
+name: Bug report
+description: Something is missing, wrong, or misbehaving
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! Security problems should go through
+        [private vulnerability reporting](../../security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `zinnia --version`, `pacman -Q gtk4 libadwaita udisks2` and `uname -r`.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: volumes
+    attributes:
+      label: What the engine sees
+      description: Output of `zinnia volumes --json`. Please redact drive serial numbers before posting.
+      render: json
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Run `zinnia-app` from a terminal and paste anything it prints, or the CLI's stderr.
+      render: text
+```
+
+`.github/ISSUE_TEMPLATE/feature_request.yml`:
+```yaml
+name: Feature request
+description: Suggest an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to see?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+```
+
+`.github/PULL_REQUEST_TEMPLATE.md`:
+```markdown
+## What does this change?
+
+<!-- One or two sentences. Link related issues. -->
+
+## Checklist
+
+- [ ] `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings` and `cargo test --workspace` pass
+- [ ] `CHANGELOG.md` updated under `Unreleased`
+- [ ] Tests added or updated for changes in `crates/core`
+- [ ] Screenshot attached for visual changes
+- [ ] Tested on (`pacman -Q gtk4 libadwaita udisks2`): ______
+```
+
+`.github/dependabot.yml`:
+```yaml
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: monthly
+```
+
+- [ ] **Step 5: README**
+
+Replace `README.md`:
+```markdown
+# Zinnia
+
+[![CI](https://github.com/brianirish/zinnia/actions/workflows/ci.yml/badge.svg)](https://github.com/brianirish/zinnia/actions/workflows/ci.yml)
+
+A disk hub for Arch Linux: the speed, scriptability and keyboard flow of
+terminal tools with the polish of a native GTK4 and libadwaita app.
+
+## What it does today
+
+- **Volumes overview.** Every drive as a group, every volume as a row with a
+  live usage ring, filesystem, mount points and an encryption badge. Btrfs
+  subvolumes collapse into one volume; LUKS cleartext devices are attributed
+  to their physical drive.
+- **Drive page.** Full details for a volume: model, serial, transport,
+  filesystem, UUID, encryption, size, used, available, and every mount point
+  with its options.
+- **`zinnia` CLI.** `zinnia volumes` prints a table; `zinnia volumes --json`
+  prints the same data for scripts.
+- **Omarchy aware.** On Omarchy the accent follows the active theme and
+  updates live when you switch themes.
+
+Usage scanning with a sunburst, drive health (SMART and NVMe) and benchmarks
+are next; each lives in its own design doc under `docs/superpowers/specs/`.
+
+## Install
+
+From source (requires `rust`, `meson`, `ninja`, `blueprint-compiler`,
+`gtk4`, `libadwaita`, `udisks2`):
+
+    meson setup build && meson compile -C build
+    sudo meson install -C build
+
+A PKGBUILD lives in `packaging/` for building an Arch package; an AUR
+package follows the first release.
+
+## Keyboard
+
+`j` `k` move, `l` or `Enter` opens, `h` or `Escape` goes back, `1` to `4`
+switch views on a drive page, `Ctrl+Tab` cycles them, `Ctrl+R` refreshes,
+`?` lists every shortcut, `Ctrl+Q` quits.
+
+## Develop
+
+    cargo test --workspace
+    ./scripts/dev-run.sh          # run the app from the tree
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout and the PR checklist.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
+```
+
+- [ ] **Step 6: Verify**
+
+Run:
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+meson setup build --wipe 2>/dev/null || meson setup build
+meson compile -C build
+python3 -c "import yaml,glob; [yaml.safe_load(open(f)) for f in glob.glob('.github/**/*.yml', recursive=True)]; print('yaml ok')"
+```
+Expected: no diffs, no clippy findings, all tests pass, meson builds, `yaml ok`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A
+git commit -m "Add community files, CI lint gates and crate metadata for the public repo
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
