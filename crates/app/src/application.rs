@@ -12,6 +12,8 @@ mod imp {
         /// Optional path or volume given on the command line. Recorded only;
         /// sub-project 2 opens it.
         pub requested_target: RefCell<Option<String>>,
+        pub theme_monitor: RefCell<Option<gio::FileMonitor>>,
+        pub palette: RefCell<Option<crate::theme::omarchy::Palette>>,
     }
 
     #[glib::object_subclass]
@@ -59,6 +61,8 @@ mod imp {
             for (action, keys) in accels {
                 app.set_accels_for_action(action, keys);
             }
+
+            crate::theme::install(&app);
         }
 
         fn activate(&self) {
@@ -109,5 +113,10 @@ impl Application {
 
     pub fn requested_target(&self) -> Option<String> {
         self.imp().requested_target.borrow().clone()
+    }
+
+    /// Chart hues from the active Omarchy theme, if any.
+    pub fn palette(&self) -> Option<crate::theme::omarchy::Palette> {
+        self.imp().palette.borrow().clone()
     }
 }

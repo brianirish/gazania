@@ -2,6 +2,7 @@ mod application;
 mod config;
 mod pages;
 mod shortcuts;
+mod theme;
 mod widgets;
 mod window;
 
