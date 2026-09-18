@@ -1,5 +1,5 @@
-//! Untyped-but-flattened view of udisks2 objects. Task 7 fills this from D-Bus;
-//! tests fill it by hand. Object paths are kept as strings.
+//! Untyped-but-flattened view of udisks2 objects. The udisks2 client fills this
+//! from D-Bus; tests build it by hand. Object paths are kept as strings.
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RawDrive {

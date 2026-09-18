@@ -13,7 +13,6 @@ fn state_dir() -> PathBuf {
         .unwrap_or_else(|| glib::home_dir().join(".local/state"))
 }
 
-#[allow(deprecated)]
 pub fn install(app: &Application) {
     let current = state_dir().join("omarchy/current");
     let colors = current.join("theme/colors.toml");

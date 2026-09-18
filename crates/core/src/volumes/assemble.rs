@@ -431,6 +431,31 @@ mod tests {
     }
 
     #[test]
+    fn transport_usb_and_other_come_from_connection_bus() {
+        let snapshot = Snapshot {
+            drives: vec![
+                RawDrive {
+                    path: "/org/freedesktop/UDisks2/drives/Kingston_Stick".into(),
+                    model: "Kingston Stick".into(),
+                    connection_bus: "usb".into(),
+                    ..Default::default()
+                },
+                RawDrive {
+                    path: "/org/freedesktop/UDisks2/drives/SDIO_Reader".into(),
+                    model: "SDIO Reader".into(),
+                    connection_bus: "sdio".into(),
+                    ..Default::default()
+                },
+            ],
+            blocks: Vec::new(),
+        };
+        let drives = assemble(&snapshot, &[], &mut fake_stats);
+        assert_eq!(drives.len(), 2);
+        assert_eq!(drives[0].transport, Transport::Usb);
+        assert_eq!(drives[1].transport, Transport::Other("sdio".into()));
+    }
+
+    #[test]
     fn volume_without_resolvable_drive_lands_in_a_synthetic_group() {
         let mut snap = reference_snapshot();
         snap.blocks.push(RawBlock {

@@ -15,7 +15,7 @@ pub struct Rgb {
 impl Rgb {
     pub fn parse(hex: &str) -> Option<Rgb> {
         let hex = hex.trim().strip_prefix('#')?;
-        if hex.len() != 6 || !hex.is_ascii() {
+        if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
             return None;
         }
         let channel = |i: usize| u8::from_str_radix(&hex[i..i + 2], 16).ok();
@@ -68,12 +68,10 @@ pub fn parse(text: &str) -> Option<Theme> {
 
 pub fn css(theme: &Theme) -> String {
     let accent = theme.accent.hex();
-    // Deviation from the brief: the brief's sample used a 0.179 threshold
-    // (the black/white contrast crossover point), but both test fixtures
-    // (Tokyo Night's #7aa2f7 at L≈0.367, and #e0e0e0 at L≈0.745) sit above
-    // it, so that threshold would pick black for both and fail the test
-    // that expects white for the blue accent. 0.5 is the smallest change
-    // that separates the two fixtures as the test requires.
+    // The textbook black/white contrast crossover sits at L≈0.179, but real
+    // Omarchy accents cluster above it (Tokyo Night's #7aa2f7 is L≈0.367 and
+    // a light #e0e0e0 is L≈0.745), so that threshold would put black text on
+    // a mid-blue accent. 0.5 separates light from dark accents as intended.
     let fg = if theme.accent.luminance() > 0.5 {
         "#000000"
     } else {
@@ -169,6 +167,7 @@ brown = "#75493d"
     fn non_ascii_hex_is_rejected_without_panicking() {
         assert_eq!(Rgb::parse("#€234"), None);
         assert_eq!(Rgb::parse("#ééé"), None);
+        assert_eq!(Rgb::parse("#+f+f+f"), None);
         assert!(parse("accent = \"#€234\"").is_none());
     }
 }

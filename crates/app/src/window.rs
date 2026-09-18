@@ -175,6 +175,6 @@ impl Window {
             }
             return;
         }
-        self.toast(&format!("{action:?} does nothing on this page yet"));
+        glib::g_debug!("zinnia", "unhandled page action {action:?}");
     }
 }
