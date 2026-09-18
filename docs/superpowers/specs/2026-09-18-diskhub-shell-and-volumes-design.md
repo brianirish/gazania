@@ -1,11 +1,11 @@
-# diskhub: shell and volumes overview (sub-project 1)
+# zinnia: shell and volumes overview (sub-project 1)
 
 Date: 2026-09-18
 Status: approved design; implementation plan at
-`docs/superpowers/plans/2026-09-18-diskhub-shell-and-volumes.md`
+`docs/superpowers/plans/2026-09-18-zinnia-shell-and-volumes.md`
 
-`diskhub` is a placeholder name. Rename with a find-and-replace across the
-repo before the first public push.
+Name: Zinnia, chosen 2026-09-18. Crates `zinnia-core`, `zinnia-cli`, `zinnia-app`;
+binaries `zinnia` and `zinnia-app`; app id `io.github.brianirish.Zinnia`.
 
 ## Purpose
 
@@ -38,7 +38,7 @@ In:
 - Optional live theming from Omarchy's active theme colors.
 - Volumes overview as the home page, with a usage ring per volume.
 - Drive page with a Details view and three placeholder views.
-- `diskhub volumes` CLI with table and `--json` output.
+- `zinnia volumes` CLI with table and `--json` output.
 
 Out, each to be specced separately:
 
@@ -52,16 +52,16 @@ Out, each to be specced separately:
 ## Workspace
 
 ```
-diskhub/
+zinnia/
   Cargo.toml                 workspace
   crates/
-    core/                    diskhub-core, library, no GTK
-    cli/                     diskhub-cli, binary `diskhub`
-    app/                     diskhub-app, binary `diskhub-app`
+    core/                    zinnia-core, library, no GTK
+    cli/                     zinnia-cli, binary `zinnia`
+    app/                     zinnia-app, binary `zinnia-app`
   data/
-    io.github.brianirish.DiskHub.desktop.in
-    io.github.brianirish.DiskHub.metainfo.xml.in
-    io.github.brianirish.DiskHub.gschema.xml
+    io.github.brianirish.Zinnia.desktop.in
+    io.github.brianirish.Zinnia.metainfo.xml.in
+    io.github.brianirish.Zinnia.gschema.xml
     icons/                   scalable app icon and symbolic icon
   meson.build                wraps cargo, installs data/
   packaging/PKGBUILD
@@ -147,7 +147,7 @@ Sub-projects add actions, never key handlers.
 
 ### Window and application state
 
-`gtk::Application` with the id `io.github.brianirish.DiskHub`, which gives
+`gtk::Application` with the id `io.github.brianirish.Zinnia`, which gives
 single-instance behavior: a second launch focuses the running window.
 
 Persisted in gschema: `window-width`, `window-height`, `is-maximized`.
@@ -215,7 +215,7 @@ pub struct MountPoint { pub path: PathBuf, pub options: Vec<String> }
 ```
 
 All types derive `Serialize`, `Deserialize`, `Clone`, `Debug`, `PartialEq`.
-The JSON emitted by `diskhub volumes --json` is exactly `Vec<Drive>`, and is
+The JSON emitted by `zinnia volumes --json` is exactly `Vec<Drive>`, and is
 the contract the app consumes.
 
 ### Sourcing
@@ -305,7 +305,7 @@ subtitle.
 
 ### CLI
 
-`diskhub volumes` prints:
+`zinnia volumes` prints:
 
 ```
 DEVICE            FS     SIZE    USED    AVAIL   USE%  MOUNTS

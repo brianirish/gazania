@@ -1,8 +1,8 @@
-# diskhub
+# Zinnia
 
 A disk hub for Arch Linux: the speed, scriptability and keyboard flow of
-terminal tools with the polish of a native GTK4 app. `diskhub` is the CLI,
-`diskhub-app` is the desktop app. Both share one engine crate.
+terminal tools with the polish of a native GTK4 app. `zinnia` is the CLI,
+`zinnia-app` is the desktop app. Both share one engine crate.
 
 Sub-project 1 ships the app shell and the volumes overview. Scanning, drive
 health and benchmarks follow.

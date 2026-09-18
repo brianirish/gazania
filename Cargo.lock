@@ -288,37 +288,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a31eee39dddec8330830986fcd7625edb5a24ec90ea038215273bbc3adb08ac6"
 
 [[package]]
-name = "diskhub-app"
-version = "0.1.0"
-dependencies = [
- "diskhub-core",
-]
-
-[[package]]
-name = "diskhub-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "diskhub-core",
- "serde_json",
- "zbus",
-]
-
-[[package]]
-name = "diskhub-core"
-version = "0.1.0"
-dependencies = [
- "futures-lite",
- "rustix",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
- "zbus",
- "zvariant",
-]
-
-[[package]]
 name = "endi"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -999,6 +968,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1afec51604565183aeb5c54c20aeab286120d4e4460f7f76e3e8bb8c0d99473"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "zinnia-app"
+version = "0.1.0"
+dependencies = [
+ "zinnia-core",
+]
+
+[[package]]
+name = "zinnia-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "serde_json",
+ "zbus",
+ "zinnia-core",
+]
+
+[[package]]
+name = "zinnia-core"
+version = "0.1.0"
+dependencies = [
+ "futures-lite",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "zbus",
+ "zvariant",
 ]
 
 [[package]]
