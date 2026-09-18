@@ -1,5 +1,6 @@
 mod application;
 mod config;
+mod shortcuts;
 mod window;
 
 use gtk::{gio, glib, prelude::*};

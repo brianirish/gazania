@@ -35,6 +35,30 @@ mod imp {
                     gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
                 );
             }
+
+            let app = self.obj();
+            let quit = gio::ActionEntry::builder("quit")
+                .activate(|app: &super::Application, _, _| app.quit())
+                .build();
+            app.add_action_entries([quit]);
+
+            let accels: &[(&str, &[&str])] = &[
+                ("app.quit", &["<Control>q"]),
+                ("win.back", &["Escape", "h"]),
+                ("win.refresh", &["<Control>r"]),
+                ("win.next", &["j"]),
+                ("win.prev", &["k"]),
+                ("win.activate", &["l"]),
+                ("win.view(1)", &["1"]),
+                ("win.view(2)", &["2"]),
+                ("win.view(3)", &["3"]),
+                ("win.view(4)", &["4"]),
+                ("win.cycle-view", &["<Control>Tab"]),
+                ("win.shortcuts", &["question"]),
+            ];
+            for (action, keys) in accels {
+                app.set_accels_for_action(action, keys);
+            }
         }
 
         fn activate(&self) {

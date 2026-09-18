@@ -3,6 +3,16 @@ use crate::config::APP_ID;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*, CompositeTemplate};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PageAction {
+    Refresh,
+    Next,
+    Prev,
+    Activate,
+    View(i32),
+    CycleView,
+}
+
 mod imp {
     use super::*;
 
@@ -34,6 +44,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             self.obj().bind_settings();
+            self.obj().setup_actions();
         }
     }
 
@@ -70,5 +81,49 @@ impl Window {
 
     pub fn toast(&self, text: &str) {
         self.imp().toasts.add_toast(adw::Toast::new(text));
+    }
+
+    fn setup_actions(&self) {
+        let back = gio::ActionEntry::builder("back")
+            .activate(|win: &Self, _, _| {
+                win.navigation().pop();
+            })
+            .build();
+        let shortcuts = gio::ActionEntry::builder("shortcuts")
+            .activate(|win: &Self, _, _| crate::shortcuts::present(win.upcast_ref()))
+            .build();
+        let refresh = gio::ActionEntry::builder("refresh")
+            .activate(|win: &Self, _, _| win.dispatch(PageAction::Refresh))
+            .build();
+        let next = gio::ActionEntry::builder("next")
+            .activate(|win: &Self, _, _| win.dispatch(PageAction::Next))
+            .build();
+        let prev = gio::ActionEntry::builder("prev")
+            .activate(|win: &Self, _, _| win.dispatch(PageAction::Prev))
+            .build();
+        let activate = gio::ActionEntry::builder("activate")
+            .activate(|win: &Self, _, _| win.dispatch(PageAction::Activate))
+            .build();
+        let view = gio::ActionEntry::builder("view")
+            .parameter_type(Some(glib::VariantTy::INT32))
+            .activate(|win: &Self, _, param| {
+                let n = param.and_then(|p| p.get::<i32>()).unwrap_or(1);
+                win.dispatch(PageAction::View(n));
+            })
+            .build();
+        let cycle = gio::ActionEntry::builder("cycle-view")
+            .activate(|win: &Self, _, _| win.dispatch(PageAction::CycleView))
+            .build();
+        self.add_action_entries([back, shortcuts, refresh, next, prev, activate, view, cycle]);
+    }
+
+    /// Route a page-level action to whichever page is visible.
+    /// Task 13 adds the overview arm and Task 14 the drive-page arm.
+    pub fn dispatch(&self, action: PageAction) {
+        let Some(page) = self.navigation().visible_page() else {
+            return;
+        };
+        let _ = &page;
+        self.toast(&format!("{action:?} does nothing on this page yet"));
     }
 }
