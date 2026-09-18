@@ -37,7 +37,10 @@ pub struct Arc {
 /// An arc from twelve o'clock covering `fraction` of the circle, clockwise.
 pub fn arc_for(fraction: f64) -> Arc {
     let start = -PI / 2.0;
-    Arc { start, end: start + fraction.clamp(0.0, 1.0) * 2.0 * PI }
+    Arc {
+        start,
+        end: start + fraction.clamp(0.0, 1.0) * 2.0 * PI,
+    }
 }
 
 pub fn point(cx: f64, cy: f64, radius: f64, angle: f64) -> (f64, f64) {

@@ -41,7 +41,11 @@ pub async fn list_volumes() -> Result<VolumesReport> {
     .await;
 
     match via_udisks {
-        Ok(drives) => Ok(VolumesReport { source: Source::Udisks2, fallback_reason: None, drives }),
+        Ok(drives) => Ok(VolumesReport {
+            source: Source::Udisks2,
+            fallback_reason: None,
+            drives,
+        }),
         Err(e @ (Error::DbusUnavailable(_) | Error::Dbus(_))) => Ok(VolumesReport {
             source: Source::MountinfoFallback,
             fallback_reason: Some(e.to_string()),

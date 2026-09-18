@@ -37,7 +37,10 @@ pub async fn snapshot(conn: &zbus::Connection) -> Result<Snapshot> {
         .build()
         .await
         .map_err(dbus)?;
-    let managed = proxy.get_managed_objects().await.map_err(|e| Error::Dbus(e.to_string()))?;
+    let managed = proxy
+        .get_managed_objects()
+        .await
+        .map_err(|e| Error::Dbus(e.to_string()))?;
     let objects: Objects = managed
         .into_iter()
         .map(|(path, ifaces)| {
@@ -172,10 +175,18 @@ mod tests {
     use super::*;
     use zbus::zvariant::{ObjectPath, Value};
 
-    fn s(v: &str) -> OwnedValue { OwnedValue::try_from(Value::from(v)).unwrap() }
-    fn u(v: u64) -> OwnedValue { OwnedValue::try_from(Value::from(v)).unwrap() }
-    fn i(v: i32) -> OwnedValue { OwnedValue::try_from(Value::from(v)).unwrap() }
-    fn b(v: bool) -> OwnedValue { OwnedValue::try_from(Value::from(v)).unwrap() }
+    fn s(v: &str) -> OwnedValue {
+        OwnedValue::try_from(Value::from(v)).unwrap()
+    }
+    fn u(v: u64) -> OwnedValue {
+        OwnedValue::try_from(Value::from(v)).unwrap()
+    }
+    fn i(v: i32) -> OwnedValue {
+        OwnedValue::try_from(Value::from(v)).unwrap()
+    }
+    fn b(v: bool) -> OwnedValue {
+        OwnedValue::try_from(Value::from(v)).unwrap()
+    }
     fn o(v: &str) -> OwnedValue {
         OwnedValue::try_from(Value::from(ObjectPath::try_from(v).unwrap())).unwrap()
     }
@@ -228,7 +239,10 @@ mod tests {
                 ("IdUUID".to_string(), s("62a5fc50")),
                 ("Size".to_string(), u(509_943_480_320)),
                 ("HintIgnore".to_string(), b(false)),
-                ("CryptoBackingDevice".to_string(), o("/org/freedesktop/UDisks2/block_devices/nvme0n1p2")),
+                (
+                    "CryptoBackingDevice".to_string(),
+                    o("/org/freedesktop/UDisks2/block_devices/nvme0n1p2"),
+                ),
             ]),
         );
         block.insert(
@@ -238,7 +252,10 @@ mod tests {
                 aay(&["/", "/home", "/var/cache/pacman/pkg", "/var/log"]),
             )]),
         );
-        objects.insert("/org/freedesktop/UDisks2/block_devices/dm_2d0".into(), block);
+        objects.insert(
+            "/org/freedesktop/UDisks2/block_devices/dm_2d0".into(),
+            block,
+        );
 
         let mut swap: HashMap<String, Props> = HashMap::new();
         swap.insert(
@@ -273,7 +290,11 @@ mod tests {
     #[test]
     fn flatten_decodes_block_byte_strings_paths_and_mount_points() {
         let snap = flatten(reference_objects());
-        let root = snap.blocks.iter().find(|b| b.path.ends_with("dm_2d0")).unwrap();
+        let root = snap
+            .blocks
+            .iter()
+            .find(|b| b.path.ends_with("dm_2d0"))
+            .unwrap();
         assert_eq!(root.device, "/dev/dm-0");
         assert_eq!(root.preferred_device, "/dev/mapper/root");
         assert_eq!(root.drive, None, "a Drive of '/' means none");
@@ -284,7 +305,10 @@ mod tests {
             Some("/org/freedesktop/UDisks2/block_devices/nvme0n1p2")
         );
         assert!(root.has_filesystem);
-        assert_eq!(root.mount_points, vec!["/", "/home", "/var/cache/pacman/pkg", "/var/log"]);
+        assert_eq!(
+            root.mount_points,
+            vec!["/", "/home", "/var/cache/pacman/pkg", "/var/log"]
+        );
         assert!(!root.is_partition);
         assert!(!root.is_encrypted);
     }
@@ -292,7 +316,11 @@ mod tests {
     #[test]
     fn flatten_marks_swapspace_blocks() {
         let snap = flatten(reference_objects());
-        let z = snap.blocks.iter().find(|b| b.path.ends_with("zram0")).unwrap();
+        let z = snap
+            .blocks
+            .iter()
+            .find(|b| b.path.ends_with("zram0"))
+            .unwrap();
         assert!(z.is_swap);
         assert!(!z.has_filesystem);
         assert!(z.mount_points.is_empty());

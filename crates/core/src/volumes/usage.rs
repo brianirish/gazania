@@ -17,7 +17,10 @@ pub fn stats_for(path: &Path) -> Result<FsStats> {
     })?;
     let frsize = vfs.f_frsize;
     let size = vfs.f_blocks.saturating_mul(frsize);
-    let used = vfs.f_blocks.saturating_sub(vfs.f_bfree).saturating_mul(frsize);
+    let used = vfs
+        .f_blocks
+        .saturating_sub(vfs.f_bfree)
+        .saturating_mul(frsize);
     let available = vfs.f_bavail.saturating_mul(frsize);
     Ok(FsStats {
         size,

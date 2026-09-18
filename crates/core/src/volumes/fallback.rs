@@ -12,7 +12,10 @@ pub fn assemble_fallback(
 ) -> Vec<Drive> {
     let mut drives: Vec<Drive> = Vec::new();
     for m in mounts.iter().filter(|m| is_block_source(&m.source)) {
-        let mount = MountPoint { path: m.mount_point.clone(), options: m.options.clone() };
+        let mount = MountPoint {
+            path: m.mount_point.clone(),
+            options: m.options.clone(),
+        };
         if let Some(d) = drives.iter_mut().find(|d| d.id == m.source) {
             d.volumes[0].mount_points.push(mount);
             continue;
@@ -51,7 +54,10 @@ pub fn assemble_fallback(
 }
 
 fn is_block_source(source: &str) -> bool {
-    let name = Path::new(source).file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let name = Path::new(source)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("");
     source.starts_with("/dev/") && !name.starts_with("loop") && !name.starts_with("zram")
 }
 
@@ -66,8 +72,20 @@ mod tests {
 
     fn stats(path: &Path) -> Option<FsStats> {
         match path.to_str().unwrap() {
-            "/" => Some(FsStats { size: 1000, usage: Usage { used: 400, available: 500 } }),
-            "/boot" => Some(FsStats { size: 200, usage: Usage { used: 20, available: 170 } }),
+            "/" => Some(FsStats {
+                size: 1000,
+                usage: Usage {
+                    used: 400,
+                    available: 500,
+                },
+            }),
+            "/boot" => Some(FsStats {
+                size: 200,
+                usage: Usage {
+                    used: 20,
+                    available: 170,
+                },
+            }),
             _ => None,
         }
     }
@@ -95,7 +113,13 @@ mod tests {
         assert_eq!(v.fs_type.as_deref(), Some("btrfs"));
         assert_eq!(v.mount_points.len(), 4);
         assert_eq!(v.size, 1000);
-        assert_eq!(v.usage, Some(Usage { used: 400, available: 500 }));
+        assert_eq!(
+            v.usage,
+            Some(Usage {
+                used: 400,
+                available: 500
+            })
+        );
         assert!(v.encrypted, "mapper devices are reported as encrypted");
     }
 

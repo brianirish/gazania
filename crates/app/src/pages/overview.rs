@@ -5,13 +5,13 @@ use crate::pages::volume_row::VolumeRow;
 use crate::window::Window;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use zinnia_core::format::human_size;
-use zinnia_core::volumes::{self, Source, VolumesReport};
-use zinnia_core::{Drive, Transport};
 use futures_lite::StreamExt;
 use gtk::{glib, CompositeTemplate};
 use std::cell::{Cell, RefCell};
 use std::time::Duration;
+use zinnia_core::format::human_size;
+use zinnia_core::volumes::{self, Source, VolumesReport};
+use zinnia_core::{Drive, Transport};
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 const DEBOUNCE: Duration = Duration::from_millis(300);
@@ -149,7 +149,8 @@ impl OverviewPage {
         let empty = rows.is_empty();
         imp.rows.replace(rows);
         if empty {
-            imp.empty_page.set_description(Some("Nothing mounted or attached could be listed."));
+            imp.empty_page
+                .set_description(Some("Nothing mounted or attached could be listed."));
             imp.stack.set_visible_child_name("empty");
         } else {
             imp.stack.set_visible_child_name("list");
@@ -168,7 +169,9 @@ impl OverviewPage {
 
     pub fn open_row(&self, row: &VolumeRow) {
         if let Some(window) = self.window() {
-            window.navigation().push(&DrivePage::new(&row.drive(), &row.volume()));
+            window
+                .navigation()
+                .push(&DrivePage::new(&row.drive(), &row.volume()));
         }
     }
 
@@ -186,7 +189,10 @@ impl OverviewPage {
         if rows.is_empty() {
             return;
         }
-        let next = self.focused_index().map(|i| (i + 1).min(rows.len() - 1)).unwrap_or(0);
+        let next = self
+            .focused_index()
+            .map(|i| (i + 1).min(rows.len() - 1))
+            .unwrap_or(0);
         rows[next].grab_focus();
     }
 
@@ -195,7 +201,10 @@ impl OverviewPage {
         if rows.is_empty() {
             return;
         }
-        let prev = self.focused_index().map(|i| i.saturating_sub(1)).unwrap_or(0);
+        let prev = self
+            .focused_index()
+            .map(|i| i.saturating_sub(1))
+            .unwrap_or(0);
         rows[prev].grab_focus();
     }
 

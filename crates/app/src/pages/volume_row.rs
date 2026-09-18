@@ -4,10 +4,10 @@ use crate::widgets::geometry::fraction;
 use crate::widgets::usage_ring::UsageRing;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use zinnia_core::format::human_size;
-use zinnia_core::{Drive, Volume};
 use gtk::glib;
 use std::cell::RefCell;
+use zinnia_core::format::human_size;
+use zinnia_core::{Drive, Volume};
 
 mod imp {
     use super::*;
@@ -42,7 +42,12 @@ impl VolumeRow {
     pub fn new(drive: &Drive, volume: &Volume) -> Self {
         let row: Self = glib::Object::new();
         row.set_activatable(true);
-        row.set_title(&volume.label.clone().unwrap_or_else(|| volume.device.display().to_string()));
+        row.set_title(
+            &volume
+                .label
+                .clone()
+                .unwrap_or_else(|| volume.device.display().to_string()),
+        );
 
         let mounts = if volume.mount_points.is_empty() {
             human_size(volume.size)
@@ -58,7 +63,12 @@ impl VolumeRow {
         row.set_subtitle(&format!("{fs} · {mounts}"));
 
         let ring = UsageRing::new();
-        ring.set_fraction(volume.usage.map(|u| fraction(u.used, volume.size)).unwrap_or(0.0));
+        ring.set_fraction(
+            volume
+                .usage
+                .map(|u| fraction(u.used, volume.size))
+                .unwrap_or(0.0),
+        );
         row.add_prefix(&ring);
 
         if volume.encrypted {
@@ -83,10 +93,18 @@ impl VolumeRow {
     }
 
     pub fn drive(&self) -> Drive {
-        self.imp().drive.borrow().clone().expect("row built with a drive")
+        self.imp()
+            .drive
+            .borrow()
+            .clone()
+            .expect("row built with a drive")
     }
 
     pub fn volume(&self) -> Volume {
-        self.imp().volume.borrow().clone().expect("row built with a volume")
+        self.imp()
+            .volume
+            .borrow()
+            .clone()
+            .expect("row built with a volume")
     }
 }
