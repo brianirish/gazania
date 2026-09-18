@@ -34,7 +34,9 @@ pub fn install(app: &Application) {
 
     // Omarchy swaps the whole `current/theme` directory on a theme change, so a
     // monitor on the file itself would go stale. Watch the parent directory.
-    match gio::File::for_path(&current).monitor_directory(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE) {
+    match gio::File::for_path(&current)
+        .monitor_directory(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE)
+    {
         Ok(monitor) => {
             monitor.connect_changed(glib::clone!(
                 #[weak]
@@ -52,7 +54,10 @@ pub fn install(app: &Application) {
 }
 
 fn apply(app: &Application, provider: &gtk::CssProvider, colors: &PathBuf) {
-    match std::fs::read_to_string(colors).ok().and_then(|t| omarchy::parse(&t)) {
+    match std::fs::read_to_string(colors)
+        .ok()
+        .and_then(|t| omarchy::parse(&t))
+    {
         Some(theme) => {
             provider.load_from_string(&omarchy::css(&theme));
             app.imp().palette.replace(Some(theme.palette));
@@ -60,7 +65,11 @@ fn apply(app: &Application, provider: &gtk::CssProvider, colors: &PathBuf) {
         None => {
             provider.load_from_string("");
             app.imp().palette.replace(None);
-            glib::g_debug!("zinnia", "omarchy colors unreadable at {}, using stock look", colors.display());
+            glib::g_debug!(
+                "zinnia",
+                "omarchy colors unreadable at {}, using stock look",
+                colors.display()
+            );
         }
     }
 }

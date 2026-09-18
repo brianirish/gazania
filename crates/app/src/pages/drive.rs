@@ -3,11 +3,11 @@
 use crate::window::Window;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use gtk::{glib, CompositeTemplate};
+use std::cell::RefCell;
 use zinnia_core::format::human_size;
 use zinnia_core::volumes;
 use zinnia_core::{Drive, Volume};
-use gtk::{glib, CompositeTemplate};
-use std::cell::RefCell;
 
 const VIEWS: [&str; 4] = ["usage", "health", "benchmark", "details"];
 
@@ -69,11 +69,22 @@ impl DrivePage {
 
     fn fill(&self, drive: &Drive, volume: &Volume) {
         let imp = self.imp();
-        self.set_title(&volume.label.clone().unwrap_or_else(|| volume.device.display().to_string()));
+        self.set_title(
+            &volume
+                .label
+                .clone()
+                .unwrap_or_else(|| volume.device.display().to_string()),
+        );
 
         for row in imp.rows.take() {
-            if let Some(group) = row.parent().and_then(|p| p.ancestor(adw::PreferencesGroup::static_type())) {
-                group.downcast::<adw::PreferencesGroup>().unwrap().remove(&row);
+            if let Some(group) = row
+                .parent()
+                .and_then(|p| p.ancestor(adw::PreferencesGroup::static_type()))
+            {
+                group
+                    .downcast::<adw::PreferencesGroup>()
+                    .unwrap()
+                    .remove(&row);
             }
         }
 
@@ -81,8 +92,14 @@ impl DrivePage {
         let mut rows = Vec::new();
         for (title, value) in [
             ("Model", drive.model.clone()),
-            ("Serial", drive.serial.clone().unwrap_or_else(|| "Unknown".into())),
-            ("Vendor", drive.vendor.clone().unwrap_or_else(|| "Unknown".into())),
+            (
+                "Serial",
+                drive.serial.clone().unwrap_or_else(|| "Unknown".into()),
+            ),
+            (
+                "Vendor",
+                drive.vendor.clone().unwrap_or_else(|| "Unknown".into()),
+            ),
             ("Transport", drive.transport.label()),
             ("Rotational", yes_no(drive.rotational).into()),
             ("Removable", yes_no(drive.removable).into()),
@@ -102,8 +119,17 @@ impl DrivePage {
         };
         for (title, value) in [
             ("Device", volume.device.display().to_string()),
-            ("Filesystem", volume.fs_type.clone().unwrap_or_else(|| "Unformatted".into())),
-            ("Label", volume.label.clone().unwrap_or_else(|| "None".into())),
+            (
+                "Filesystem",
+                volume
+                    .fs_type
+                    .clone()
+                    .unwrap_or_else(|| "Unformatted".into()),
+            ),
+            (
+                "Label",
+                volume.label.clone().unwrap_or_else(|| "None".into()),
+            ),
             ("UUID", volume.uuid.clone().unwrap_or_else(|| "None".into())),
             ("Encrypted", encrypted),
             ("Size", human_size(volume.size)),
@@ -117,7 +143,11 @@ impl DrivePage {
             rows.push(property_row(&imp.mounts_group, "Not mounted", ""));
         }
         for mp in &volume.mount_points {
-            rows.push(property_row(&imp.mounts_group, &mp.path.display().to_string(), &mp.options.join(", ")));
+            rows.push(property_row(
+                &imp.mounts_group,
+                &mp.path.display().to_string(),
+                &mp.options.join(", "),
+            ));
         }
         imp.rows.replace(rows);
     }
@@ -130,8 +160,13 @@ impl DrivePage {
 
     pub fn cycle_view(&self) {
         let current = self.imp().views.visible_child_name().map(|n| n.to_string());
-        let idx = VIEWS.iter().position(|v| Some(*v) == current.as_deref()).unwrap_or(0);
-        self.imp().views.set_visible_child_name(VIEWS[(idx + 1) % VIEWS.len()]);
+        let idx = VIEWS
+            .iter()
+            .position(|v| Some(*v) == current.as_deref())
+            .unwrap_or(0);
+        self.imp()
+            .views
+            .set_visible_child_name(VIEWS[(idx + 1) % VIEWS.len()]);
     }
 
     /// Re-enumerate and refill Details for this volume.
@@ -142,7 +177,10 @@ impl DrivePage {
             match volumes::list_volumes().await {
                 Ok(report) => {
                     let found = report.drives.iter().find_map(|d| {
-                        d.volumes.iter().find(|v| v.id == id).map(|v| (d.clone(), v.clone()))
+                        d.volumes
+                            .iter()
+                            .find(|v| v.id == id)
+                            .map(|v| (d.clone(), v.clone()))
                     });
                     match found {
                         Some((drive, volume)) => page.fill(&drive, &volume),
@@ -164,7 +202,10 @@ impl DrivePage {
 }
 
 fn property_row(group: &adw::PreferencesGroup, title: &str, value: &str) -> gtk::Widget {
-    let row = adw::ActionRow::builder().title(title).subtitle(value).build();
+    let row = adw::ActionRow::builder()
+        .title(title)
+        .subtitle(value)
+        .build();
     row.add_css_class("property");
     row.set_subtitle_selectable(true);
     group.add(&row);

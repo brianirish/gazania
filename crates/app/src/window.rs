@@ -76,7 +76,9 @@ impl Window {
     fn bind_settings(&self) {
         let settings = gio::Settings::new(APP_ID);
         settings.bind("window-width", self, "default-width").build();
-        settings.bind("window-height", self, "default-height").build();
+        settings
+            .bind("window-height", self, "default-height")
+            .build();
         settings.bind("is-maximized", self, "maximized").build();
     }
 

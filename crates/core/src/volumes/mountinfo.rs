@@ -42,11 +42,17 @@ fn parse_line(line: &str) -> std::result::Result<MountEntry, String> {
         .ok_or_else(|| "missing ' - ' separator".to_string())?;
     let left: Vec<&str> = left.split_whitespace().collect();
     if left.len() < 6 {
-        return Err(format!("expected at least 6 fields before separator, got {}", left.len()));
+        return Err(format!(
+            "expected at least 6 fields before separator, got {}",
+            left.len()
+        ));
     }
     let right: Vec<&str> = right.split_whitespace().collect();
     if right.len() < 3 {
-        return Err(format!("expected 3 fields after separator, got {}", right.len()));
+        return Err(format!(
+            "expected 3 fields after separator, got {}",
+            right.len()
+        ));
     }
 
     let mut options: Vec<String> = Vec::new();
@@ -106,7 +112,15 @@ mod tests {
         assert_eq!(root.source, "/dev/mapper/root");
         assert_eq!(
             root.options,
-            vec!["rw", "relatime", "compress=zstd:3", "ssd", "space_cache=v2", "subvolid=256", "subvol=/@"]
+            vec![
+                "rw",
+                "relatime",
+                "compress=zstd:3",
+                "ssd",
+                "space_cache=v2",
+                "subvolid=256",
+                "subvol=/@"
+            ]
         );
     }
 

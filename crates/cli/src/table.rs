@@ -40,7 +40,11 @@ pub fn render_table(drives: &[Drive]) -> String {
 
 fn row(v: &Volume) -> [String; 7] {
     let (used, avail, pct) = match v.usage {
-        Some(u) => (human_size(u.used), human_size(u.available), format!("{}%", percent(u.used, u.available))),
+        Some(u) => (
+            human_size(u.used),
+            human_size(u.available),
+            format!("{}%", percent(u.used, u.available)),
+        ),
         None => ("-".into(), "-".into(), "-".into()),
     };
     let mounts = if v.mount_points.is_empty() {
@@ -75,8 +79,8 @@ fn percent(used: u64, available: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use zinnia_core::{MountPoint, Transport, Usage, Volume};
     use std::path::PathBuf;
+    use zinnia_core::{MountPoint, Transport, Usage, Volume};
 
     const G: u64 = 1024 * 1024 * 1024;
 
@@ -91,7 +95,10 @@ mod tests {
             usage,
             mount_points: mounts
                 .iter()
-                .map(|m| MountPoint { path: PathBuf::from(m), options: vec![] })
+                .map(|m| MountPoint {
+                    path: PathBuf::from(m),
+                    options: vec![],
+                })
                 .collect(),
             encrypted: false,
             backing_device: None,
@@ -113,7 +120,10 @@ mod tests {
                     "/dev/mapper/root",
                     "btrfs",
                     475 * G,
-                    Some(Usage { used: 164 * G, available: 311 * G }),
+                    Some(Usage {
+                        used: 164 * G,
+                        available: 311 * G,
+                    }),
                     &["/", "/home", "/var/cache/pacman/pkg", "/var/log"],
                 ),
                 volume("/dev/sda1", "ntfs", 447 * G, None, &[]),
@@ -136,7 +146,10 @@ mod tests {
         let out = render_table(&drives());
         let row = out.lines().nth(1).unwrap();
         let cells: Vec<&str> = row.split_whitespace().collect();
-        assert_eq!(&cells[..6], &["/dev/mapper/root", "btrfs", "475G", "164G", "311G", "35%"]);
+        assert_eq!(
+            &cells[..6],
+            &["/dev/mapper/root", "btrfs", "475G", "164G", "311G", "35%"]
+        );
         assert!(row.ends_with("/, /home, /var/cache/pacman/pkg, /var/log"));
     }
 

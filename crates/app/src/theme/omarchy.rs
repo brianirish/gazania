@@ -1,7 +1,9 @@
 //! Omarchy publishes the active theme's colors as a flat TOML file of hex
 //! strings. We take the accent for libadwaita and the named hues for charts.
 
-const HUE_KEYS: [&str; 8] = ["red", "orange", "yellow", "green", "cyan", "blue", "magenta", "brown"];
+const HUE_KEYS: [&str; 8] = [
+    "red", "orange", "yellow", "green", "cyan", "blue", "magenta", "brown",
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rgb {
@@ -17,7 +19,11 @@ impl Rgb {
             return None;
         }
         let channel = |i: usize| u8::from_str_radix(&hex[i..i + 2], 16).ok();
-        Some(Rgb { r: channel(0)?, g: channel(2)?, b: channel(4)? })
+        Some(Rgb {
+            r: channel(0)?,
+            g: channel(2)?,
+            b: channel(4)?,
+        })
     }
 
     pub fn hex(&self) -> String {
@@ -28,7 +34,11 @@ impl Rgb {
     pub fn luminance(&self) -> f64 {
         fn lin(c: u8) -> f64 {
             let c = c as f64 / 255.0;
-            if c <= 0.03928 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+            if c <= 0.03928 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
         }
         0.2126 * lin(self.r) + 0.7152 * lin(self.g) + 0.0722 * lin(self.b)
     }
@@ -50,7 +60,10 @@ pub fn parse(text: &str) -> Option<Theme> {
     let color = |key: &str| table.get(key).and_then(|v| v.as_str()).and_then(Rgb::parse);
     let accent = color("accent")?;
     let hues = HUE_KEYS.iter().filter_map(|k| color(k)).collect();
-    Some(Theme { accent, palette: Palette { hues } })
+    Some(Theme {
+        accent,
+        palette: Palette { hues },
+    })
 }
 
 pub fn css(theme: &Theme) -> String {
@@ -61,7 +74,11 @@ pub fn css(theme: &Theme) -> String {
     // it, so that threshold would pick black for both and fail the test
     // that expects white for the blue accent. 0.5 is the smallest change
     // that separates the two fixtures as the test requires.
-    let fg = if theme.accent.luminance() > 0.5 { "#000000" } else { "#ffffff" };
+    let fg = if theme.accent.luminance() > 0.5 {
+        "#000000"
+    } else {
+        "#ffffff"
+    };
     format!(
         ":root {{\n  --accent-bg-color: {accent};\n  --accent-fg-color: {fg};\n  --accent-color: {accent};\n}}\n"
     )
@@ -89,11 +106,21 @@ brown = "#75493d"
     #[test]
     fn parses_accent_and_ordered_palette() {
         let theme = parse(TOKYO).unwrap();
-        assert_eq!(theme.accent, Rgb { r: 0x7a, g: 0xa2, b: 0xf7 });
+        assert_eq!(
+            theme.accent,
+            Rgb {
+                r: 0x7a,
+                g: 0xa2,
+                b: 0xf7
+            }
+        );
         let hex: Vec<String> = theme.palette.hues.iter().map(Rgb::hex).collect();
         assert_eq!(
             hex,
-            ["#f7768e", "#eb927b", "#e0af68", "#9ece6a", "#449dab", "#7aa2f7", "#ad8ee6", "#75493d"]
+            [
+                "#f7768e", "#eb927b", "#e0af68", "#9ece6a", "#449dab", "#7aa2f7", "#ad8ee6",
+                "#75493d"
+            ]
         );
     }
 
@@ -124,7 +151,17 @@ brown = "#75493d"
 
     #[test]
     fn luminance_is_relative_luminance() {
-        assert!((Rgb { r: 255, g: 255, b: 255 }.luminance() - 1.0).abs() < 1e-6);
+        assert!(
+            (Rgb {
+                r: 255,
+                g: 255,
+                b: 255
+            }
+            .luminance()
+                - 1.0)
+                .abs()
+                < 1e-6
+        );
         assert!(Rgb { r: 0, g: 0, b: 0 }.luminance().abs() < 1e-6);
     }
 

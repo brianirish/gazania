@@ -91,7 +91,10 @@ mod tests {
                 label: None,
                 uuid: Some("00000000-0000-4000-8000-000000000001".into()),
                 size: 509_943_480_320,
-                usage: Some(Usage { used: 176_093_659_136, available: 333_849_821_184 }),
+                usage: Some(Usage {
+                    used: 176_093_659_136,
+                    available: 333_849_821_184,
+                }),
                 mount_points: vec![MountPoint {
                     path: PathBuf::from("/"),
                     options: vec!["rw".into(), "compress=zstd:3".into()],
