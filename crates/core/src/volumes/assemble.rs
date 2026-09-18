@@ -190,8 +190,8 @@ mod tests {
     use crate::volumes::usage::FsStats;
 
     const SAMSUNG: &str =
-        "/org/freedesktop/UDisks2/drives/Samsung_SSD_960_PRO_512GB_S3EWNX0K103635W";
-    const CRUCIAL: &str = "/org/freedesktop/UDisks2/drives/Crucial_CT480M500SSD1_1338094F7044";
+        "/org/freedesktop/UDisks2/drives/Samsung_SSD_960_PRO_512GB_S3EWNX0K000000X";
+    const CRUCIAL: &str = "/org/freedesktop/UDisks2/drives/Crucial_CT480M500SSD1_0000000F7044";
     const BLK: &str = "/org/freedesktop/UDisks2/block_devices/";
 
     /// The reference machine: NVMe with a vfat ESP (hint-ignore but mounted) and a
@@ -210,7 +210,7 @@ mod tests {
                 RawDrive {
                     path: SAMSUNG.into(),
                     model: "Samsung SSD 960 PRO 512GB".into(),
-                    serial: "S3EWNX0K103635W".into(),
+                    serial: "S3EWNX0K000000X".into(),
                     size: 512_110_190_592,
                     rotation_rate: 0,
                     is_nvme: true,
@@ -219,7 +219,7 @@ mod tests {
                 RawDrive {
                     path: CRUCIAL.into(),
                     model: "Crucial_CT480M500SSD1".into(),
-                    serial: "1338094F7044".into(),
+                    serial: "0000000F7044".into(),
                     size: 480_103_981_056,
                     rotation_rate: 0,
                     is_ata: true,

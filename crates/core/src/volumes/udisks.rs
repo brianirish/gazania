@@ -215,7 +215,7 @@ mod tests {
             IF_DRIVE.into(),
             HashMap::from([
                 ("Model".to_string(), s("Samsung SSD 960 PRO 512GB")),
-                ("Serial".to_string(), s("S3EWNX0K103635W")),
+                ("Serial".to_string(), s("S3EWNX0K000000X")),
                 ("Vendor".to_string(), s("")),
                 ("Size".to_string(), u(512_110_190_592)),
                 ("ConnectionBus".to_string(), s("")),
@@ -280,7 +280,7 @@ mod tests {
         let d = &snap.drives[0];
         assert_eq!(d.path, "/org/freedesktop/UDisks2/drives/Samsung");
         assert_eq!(d.model, "Samsung SSD 960 PRO 512GB");
-        assert_eq!(d.serial, "S3EWNX0K103635W");
+        assert_eq!(d.serial, "S3EWNX0K000000X");
         assert_eq!(d.size, 512_110_190_592);
         assert_eq!(d.rotation_rate, 0);
         assert!(d.is_nvme);

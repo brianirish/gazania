@@ -78,7 +78,7 @@ mod tests {
         Drive {
             id: "/org/freedesktop/UDisks2/drives/Samsung".into(),
             model: "Samsung SSD 960 PRO 512GB".into(),
-            serial: Some("S3EWNX0K103635W".into()),
+            serial: Some("S3EWNX0K000000X".into()),
             vendor: None,
             size: 512_110_190_592,
             transport: Transport::Nvme,

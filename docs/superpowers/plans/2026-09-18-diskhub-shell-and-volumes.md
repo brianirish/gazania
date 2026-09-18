@@ -302,7 +302,7 @@ mod tests {
         Drive {
             id: "/org/freedesktop/UDisks2/drives/Samsung".into(),
             model: "Samsung SSD 960 PRO 512GB".into(),
-            serial: Some("S3EWNX0K103635W".into()),
+            serial: Some("S3EWNX0K000000X".into()),
             vendor: None,
             size: 512_110_190_592,
             transport: Transport::Nvme,
@@ -892,8 +892,8 @@ mod tests {
     use crate::volumes::raw::{RawBlock, RawDrive, Snapshot};
     use crate::volumes::usage::FsStats;
 
-    const SAMSUNG: &str = "/org/freedesktop/UDisks2/drives/Samsung_SSD_960_PRO_512GB_S3EWNX0K103635W";
-    const CRUCIAL: &str = "/org/freedesktop/UDisks2/drives/Crucial_CT480M500SSD1_1338094F7044";
+    const SAMSUNG: &str = "/org/freedesktop/UDisks2/drives/Samsung_SSD_960_PRO_512GB_S3EWNX0K000000X";
+    const CRUCIAL: &str = "/org/freedesktop/UDisks2/drives/Crucial_CT480M500SSD1_0000000F7044";
     const BLK: &str = "/org/freedesktop/UDisks2/block_devices/";
 
     /// The reference machine: NVMe with a vfat ESP (hint-ignore but mounted) and a
@@ -912,7 +912,7 @@ mod tests {
                 RawDrive {
                     path: SAMSUNG.into(),
                     model: "Samsung SSD 960 PRO 512GB".into(),
-                    serial: "S3EWNX0K103635W".into(),
+                    serial: "S3EWNX0K000000X".into(),
                     size: 512_110_190_592,
                     rotation_rate: 0,
                     is_nvme: true,
@@ -921,7 +921,7 @@ mod tests {
                 RawDrive {
                     path: CRUCIAL.into(),
                     model: "Crucial_CT480M500SSD1".into(),
-                    serial: "1338094F7044".into(),
+                    serial: "0000000F7044".into(),
                     size: 480_103_981_056,
                     rotation_rate: 0,
                     is_ata: true,
@@ -1485,7 +1485,7 @@ mod tests {
             IF_DRIVE.into(),
             HashMap::from([
                 ("Model".to_string(), s("Samsung SSD 960 PRO 512GB")),
-                ("Serial".to_string(), s("S3EWNX0K103635W")),
+                ("Serial".to_string(), s("S3EWNX0K000000X")),
                 ("Vendor".to_string(), s("")),
                 ("Size".to_string(), u(512_110_190_592)),
                 ("ConnectionBus".to_string(), s("")),
@@ -1544,7 +1544,7 @@ mod tests {
         let d = &snap.drives[0];
         assert_eq!(d.path, "/org/freedesktop/UDisks2/drives/Samsung");
         assert_eq!(d.model, "Samsung SSD 960 PRO 512GB");
-        assert_eq!(d.serial, "S3EWNX0K103635W");
+        assert_eq!(d.serial, "S3EWNX0K000000X");
         assert_eq!(d.size, 512_110_190_592);
         assert_eq!(d.rotation_rate, 0);
         assert!(d.is_nvme);
