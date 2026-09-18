@@ -1,0 +1,86 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $ZinniaDrivePage : Adw.NavigationPage {
+  tag: "drive";
+
+  child: Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      title-widget: Adw.ViewSwitcher {
+        stack: views;
+        policy: wide;
+      };
+    }
+
+    content: Adw.ViewStack views {
+      Adw.ViewStackPage {
+        name: "usage";
+        title: "Usage";
+        icon-name: "folder-symbolic";
+        child: Adw.StatusPage {
+          icon-name: "folder-symbolic";
+          title: "Usage";
+          description: "Coming in a later release";
+        };
+      }
+
+      Adw.ViewStackPage {
+        name: "health";
+        title: "Health";
+        icon-name: "emblem-ok-symbolic";
+        child: Adw.StatusPage {
+          icon-name: "emblem-ok-symbolic";
+          title: "Health";
+          description: "Coming in a later release";
+        };
+      }
+
+      Adw.ViewStackPage {
+        name: "benchmark";
+        title: "Benchmark";
+        icon-name: "utilities-system-monitor-symbolic";
+        child: Adw.StatusPage {
+          icon-name: "utilities-system-monitor-symbolic";
+          title: "Benchmark";
+          description: "Coming in a later release";
+        };
+      }
+
+      Adw.ViewStackPage {
+        name: "details";
+        title: "Details";
+        icon-name: "dialog-information-symbolic";
+        child: Gtk.ScrolledWindow {
+          hscrollbar-policy: never;
+
+          child: Adw.Clamp {
+            maximum-size: 800;
+            tightening-threshold: 600;
+
+            child: Gtk.Box {
+              orientation: vertical;
+              spacing: 24;
+              margin-top: 24;
+              margin-bottom: 24;
+              margin-start: 12;
+              margin-end: 12;
+
+              Adw.PreferencesGroup drive_group {
+                title: "Drive";
+              }
+
+              Adw.PreferencesGroup volume_group {
+                title: "Volume";
+              }
+
+              Adw.PreferencesGroup mounts_group {
+                title: "Mount Points";
+              }
+            };
+          };
+        };
+      }
+    };
+  };
+}

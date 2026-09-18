@@ -1,5 +1,6 @@
 //! Home page: every drive as a group, every volume as a row.
 
+use crate::pages::drive::DrivePage;
 use crate::pages::volume_row::VolumeRow;
 use crate::window::Window;
 use adw::prelude::*;
@@ -165,10 +166,9 @@ impl OverviewPage {
         }
     }
 
-    /// Task 14 replaces this body with a push of the drive page.
     pub fn open_row(&self, row: &VolumeRow) {
         if let Some(window) = self.window() {
-            window.toast(&format!("Opening {}", row.volume().device.display()));
+            window.navigation().push(&DrivePage::new(&row.drive(), &row.volume()));
         }
     }
 
