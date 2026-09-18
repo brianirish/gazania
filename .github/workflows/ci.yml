@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git rust meson ninja blueprint-compiler gtk4 libadwaita udisks2 pkgconf
+          git config --global --add safe.directory '*'
+      - uses: actions/checkout@v4
+      - name: Test
+        run: cargo test --workspace --locked
+      - name: Meson build
+        run: |
+          meson setup build
+          meson compile -C build
