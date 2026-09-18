@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-18
+
 ### Added
 
 - `zinnia-core`: drives and volumes from udisks2 with btrfs subvolume
@@ -17,3 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per volume), a per-volume page with Details, vim-flavored keyboard
   navigation, and live accent theming from the active Omarchy theme.
 - meson build, PKGBUILD and CI on Arch Linux.
+
+[Unreleased]: https://github.com/brianirish/zinnia/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/brianirish/zinnia/releases/tag/v0.1.0
