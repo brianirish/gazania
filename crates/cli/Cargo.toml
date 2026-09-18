@@ -1,15 +1,15 @@
 [package]
-name = "diskhub-cli"
+name = "zinnia-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "diskhub"
+name = "zinnia"
 path = "src/main.rs"
 
 [dependencies]
-diskhub-core.workspace = true
+zinnia-core.workspace = true
 clap.workspace = true
 serde_json.workspace = true
 zbus.workspace = true

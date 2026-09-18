@@ -1,22 +1,22 @@
-# diskhub Shell and Volumes Overview Implementation Plan
+# zinnia Shell and Volumes Overview Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build sub-project 1 of diskhub: a Rust workspace with a GTK-free core crate, a `diskhub volumes` CLI, and a GTK4 + libadwaita app whose home page lists drives and volumes with a usage ring, a drive page with Details, vim-flavored shortcuts, optional live Omarchy theming, plus meson, PKGBUILD and CI.
+**Goal:** Build sub-project 1 of zinnia: a Rust workspace with a GTK-free core crate, a `zinnia volumes` CLI, and a GTK4 + libadwaita app whose home page lists drives and volumes with a usage ring, a drive page with Details, vim-flavored shortcuts, optional live Omarchy theming, plus meson, PKGBUILD and CI.
 
-**Architecture:** `diskhub-core` enumerates drives and volumes from udisks2 over D-Bus (one `GetManagedObjects` call), enriches them with mountinfo options and statvfs usage, and falls back to mountinfo alone when D-Bus is unreachable. The grouping logic is pure and fixture-tested behind a `BlockSource` trait. `diskhub-cli` and `diskhub-app` both link core in-process; the app awaits core futures on the GLib main loop.
+**Architecture:** `zinnia-core` enumerates drives and volumes from udisks2 over D-Bus (one `GetManagedObjects` call), enriches them with mountinfo options and statvfs usage, and falls back to mountinfo alone when D-Bus is unreachable. The grouping logic is pure and fixture-tested behind a `BlockSource` trait. `zinnia-cli` and `zinnia-app` both link core in-process; the app awaits core futures on the GLib main loop.
 
 **Tech Stack:** Rust stable, zbus 5 (built-in async-io executor), zvariant 5, rustix 1, serde 1, thiserror 2, clap 4, toml 1, futures-lite 2, gtk4 0.11 (feature `v4_22`), libadwaita 0.9 (feature `v1_9`), glib/gio 0.22, glib-build-tools 0.22, Blueprint via blueprint-compiler, meson + ninja, GitHub Actions on `archlinux:latest`.
 
-**Spec:** `docs/superpowers/specs/2026-09-18-diskhub-shell-and-volumes-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-18-zinnia-shell-and-volumes-design.md`
 
 ## Global Constraints
 
-- Crates: `diskhub-core` (library, no gtk/glib/gio dependency), `diskhub-cli` (binary `diskhub`), `diskhub-app` (binary `diskhub-app`).
-- Application id: `io.github.brianirish.DiskHub`. Resource base path: `/io/github/brianirish/DiskHub`.
+- Crates: `zinnia-core` (library, no gtk/glib/gio dependency), `zinnia-cli` (binary `zinnia`), `zinnia-app` (binary `zinnia-app`).
+- Application id: `io.github.brianirish.Zinnia`. Resource base path: `/io/github/brianirish/Zinnia`.
 - Runtime floors: GTK 4.22, libadwaita 1.9, udisks2 2.11. Cargo features `v4_22` and `v1_9`.
-- Core never panics on filesystem or D-Bus oddities. Every public core function returns `Result<_, diskhub_core::Error>`.
-- Every CLI subcommand accepts `--json`. JSON output of `diskhub volumes --json` is exactly `Vec<Drive>` with raw byte counts. On failure with `--json`, print `[]` then exit non-zero.
+- Core never panics on filesystem or D-Bus oddities. Every public core function returns `Result<_, zinnia_core::Error>`.
+- Every CLI subcommand accepts `--json`. JSON output of `zinnia volumes --json` is exactly `Vec<Drive>` with raw byte counts. On failure with `--json`, print `[]` then exit non-zero.
 - Btrfs subvolume mounts of one block collapse into one `Volume` with several `mount_points`.
 - Hint-ignore blocks are dropped only when unmounted. Blocks with the `Encrypted` interface are never volumes (their cleartext block is). Blocks with the `Swapspace` interface and device names starting with `loop` or `zram` are dropped.
 - Omarchy colors file: `~/.local/state/omarchy/current/theme/colors.toml`; watch the directory `~/.local/state/omarchy/current`.
@@ -58,7 +58,7 @@ crates/cli/src/main.rs                       clap entry, exit codes
 crates/cli/src/table.rs                      render_table()
 crates/app/Cargo.toml
 crates/app/build.rs                          blueprint -> ui, gresource compile
-crates/app/resources/diskhub.gresource.xml
+crates/app/resources/zinnia.gresource.xml
 crates/app/src/ui/window.blp
 crates/app/src/ui/overview_page.blp
 crates/app/src/ui/drive_page.blp
@@ -77,11 +77,11 @@ crates/app/src/widgets/geometry.rs           pure arc math, unit tested
 crates/app/src/widgets/usage_ring.rs         UsageRing gtk::Widget subclass
 crates/app/src/theme/mod.rs                  install + watch Omarchy theming
 crates/app/src/theme/omarchy.rs              parse colors.toml, build CSS, Palette
-data/io.github.brianirish.DiskHub.desktop.in
-data/io.github.brianirish.DiskHub.metainfo.xml.in
-data/io.github.brianirish.DiskHub.gschema.xml
-data/icons/hicolor/scalable/apps/io.github.brianirish.DiskHub.svg
-data/icons/hicolor/symbolic/apps/io.github.brianirish.DiskHub-symbolic.svg
+data/io.github.brianirish.Zinnia.desktop.in
+data/io.github.brianirish.Zinnia.metainfo.xml.in
+data/io.github.brianirish.Zinnia.gschema.xml
+data/icons/hicolor/scalable/apps/io.github.brianirish.Zinnia.svg
+data/icons/hicolor/symbolic/apps/io.github.brianirish.Zinnia-symbolic.svg
 data/meson.build
 meson.build
 build-aux/cargo.sh
@@ -101,7 +101,7 @@ packaging/PKGBUILD
 - Create: `crates/app/Cargo.toml`, `crates/app/src/main.rs`
 
 **Interfaces:**
-- Produces: workspace dependency table used by every later task; crate names `diskhub-core`, `diskhub-cli`, `diskhub-app`.
+- Produces: workspace dependency table used by every later task; crate names `zinnia-core`, `zinnia-cli`, `zinnia-app`.
 
 - [ ] **Step 1: Install the toolchain**
 
@@ -125,10 +125,10 @@ members = ["crates/core", "crates/cli", "crates/app"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/brianirish/diskhub"
+repository = "https://github.com/brianirish/zinnia"
 
 [workspace.dependencies]
-diskhub-core = { path = "crates/core" }
+zinnia-core = { path = "crates/core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
@@ -153,7 +153,7 @@ codegen-units = 1
 `crates/core/Cargo.toml`:
 ```toml
 [package]
-name = "diskhub-core"
+name = "zinnia-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -173,24 +173,24 @@ tempfile.workspace = true
 
 `crates/core/src/lib.rs`:
 ```rust
-//! diskhub core: drives, volumes, and later scanning, health and benchmarks.
+//! zinnia core: drives, volumes, and later scanning, health and benchmarks.
 //! No GTK or GLib dependency lives here.
 ```
 
 `crates/cli/Cargo.toml`:
 ```toml
 [package]
-name = "diskhub-cli"
+name = "zinnia-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "diskhub"
+name = "zinnia"
 path = "src/main.rs"
 
 [dependencies]
-diskhub-core.workspace = true
+zinnia-core.workspace = true
 clap.workspace = true
 serde_json.workspace = true
 zbus.workspace = true
@@ -199,30 +199,30 @@ zbus.workspace = true
 `crates/cli/src/main.rs`:
 ```rust
 fn main() {
-    println!("diskhub");
+    println!("zinnia");
 }
 ```
 
 `crates/app/Cargo.toml`:
 ```toml
 [package]
-name = "diskhub-app"
+name = "zinnia-app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "diskhub-app"
+name = "zinnia-app"
 path = "src/main.rs"
 
 [dependencies]
-diskhub-core.workspace = true
+zinnia-core.workspace = true
 ```
 
 `crates/app/src/main.rs`:
 ```rust
 fn main() {
-    println!("diskhub-app");
+    println!("zinnia-app");
 }
 ```
 
@@ -244,11 +244,11 @@ fn main() {
 
 `README.md`:
 ```markdown
-# diskhub
+# zinnia
 
 A disk hub for Arch Linux: the speed, scriptability and keyboard flow of
-terminal tools with the polish of a native GTK4 app. `diskhub` is the CLI,
-`diskhub-app` is the desktop app. Both share one engine crate.
+terminal tools with the polish of a native GTK4 app. `zinnia` is the CLI,
+`zinnia-app` is the desktop app. Both share one engine crate.
 
 Sub-project 1 ships the app shell and the volumes overview. Scanning, drive
 health and benchmarks follow.
@@ -265,8 +265,8 @@ health and benchmarks follow.
 
 - [ ] **Step 5: Verify the workspace builds**
 
-Run: `cargo build --workspace && cargo run -p diskhub-cli && cargo run -p diskhub-app`
-Expected: prints `diskhub` then `diskhub-app`.
+Run: `cargo build --workspace && cargo run -p zinnia-cli && cargo run -p zinnia-app`
+Expected: prints `zinnia` then `zinnia-app`.
 
 - [ ] **Step 6: Commit**
 
@@ -287,7 +287,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Modify: `crates/core/src/lib.rs`
 
 **Interfaces:**
-- Produces: `diskhub_core::{Error, Result}`; `diskhub_core::types::{Drive, Volume, Usage, MountPoint, Transport}` exactly as below. Every later task uses these names and fields.
+- Produces: `zinnia_core::{Error, Result}`; `zinnia_core::types::{Drive, Volume, Usage, MountPoint, Transport}` exactly as below. Every later task uses these names and fields.
 
 - [ ] **Step 1: Write the failing serde round-trip test**
 
@@ -346,7 +346,7 @@ mod tests {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cargo test -p diskhub-core`
+Run: `cargo test -p zinnia-core`
 Expected: compile error, `Drive` not found.
 
 - [ ] **Step 3: Write the types and error modules**
@@ -471,7 +471,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 Replace `crates/core/src/lib.rs`:
 ```rust
-//! diskhub core: drives, volumes, and later scanning, health and benchmarks.
+//! zinnia core: drives, volumes, and later scanning, health and benchmarks.
 //! No GTK or GLib dependency lives here.
 
 pub mod bench;
@@ -486,7 +486,7 @@ pub use types::{Drive, MountPoint, Transport, Usage, Volume};
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p diskhub-core`
+Run: `cargo test -p zinnia-core`
 Expected: 2 passed.
 
 - [ ] **Step 5: Commit**
@@ -603,7 +603,7 @@ Add `pub mod volumes;` to `crates/core/src/lib.rs` after `pub mod types;`.
 
 - [ ] **Step 3: Run the tests to verify they fail**
 
-Run: `cargo test -p diskhub-core mountinfo`
+Run: `cargo test -p zinnia-core mountinfo`
 Expected: compile error, `parse` not found.
 
 - [ ] **Step 4: Write the parser**
@@ -700,7 +700,7 @@ fn unescape(s: &str) -> String {
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `cargo test -p diskhub-core mountinfo`
+Run: `cargo test -p zinnia-core mountinfo`
 Expected: 7 passed.
 
 - [ ] **Step 6: Commit**
@@ -756,7 +756,7 @@ Add `pub mod usage;` to `crates/core/src/volumes/mod.rs`.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p diskhub-core usage`
+Run: `cargo test -p zinnia-core usage`
 Expected: compile error, `stats_for` not found.
 
 - [ ] **Step 3: Write the implementation**
@@ -793,7 +793,7 @@ pub fn stats_for(path: &Path) -> Result<FsStats> {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p diskhub-core usage`
+Run: `cargo test -p zinnia-core usage`
 Expected: 2 passed.
 
 - [ ] **Step 5: Commit**
@@ -1095,7 +1095,7 @@ mod tests {
 
 - [ ] **Step 3: Run the tests to verify they fail**
 
-Run: `cargo test -p diskhub-core assemble`
+Run: `cargo test -p zinnia-core assemble`
 Expected: compile error, `assemble` not found.
 
 - [ ] **Step 4: Write the assembly logic**
@@ -1261,7 +1261,7 @@ fn non_empty(s: &str) -> Option<String> {
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `cargo test -p diskhub-core assemble`
+Run: `cargo test -p zinnia-core assemble`
 Expected: 7 passed.
 
 - [ ] **Step 6: Commit**
@@ -1347,7 +1347,7 @@ Add `pub mod fallback;` to `crates/core/src/volumes/mod.rs`.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p diskhub-core fallback`
+Run: `cargo test -p zinnia-core fallback`
 Expected: compile error, `assemble_fallback` not found.
 
 - [ ] **Step 3: Write the fallback**
@@ -1414,7 +1414,7 @@ fn is_block_source(source: &str) -> bool {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p diskhub-core fallback`
+Run: `cargo test -p zinnia-core fallback`
 Expected: 3 passed.
 
 - [ ] **Step 5: Commit**
@@ -1583,7 +1583,7 @@ mod tests {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p diskhub-core udisks`
+Run: `cargo test -p zinnia-core udisks`
 Expected: compile error, `flatten` and the `IF_*` constants not found.
 
 - [ ] **Step 3: Write the udisks2 client**
@@ -1762,7 +1762,7 @@ fn bytes_to_string(a: &Array) -> String {
 
 - [ ] **Step 4: Run the decode tests to verify they pass**
 
-Run: `cargo test -p diskhub-core udisks`
+Run: `cargo test -p zinnia-core udisks`
 Expected: 3 passed.
 
 - [ ] **Step 5: Write the public entry point**
@@ -1823,7 +1823,7 @@ pub async fn list_volumes() -> Result<VolumesReport> {
 `crates/core/examples/volumes.rs`:
 ```rust
 fn main() {
-    match zbus::block_on(diskhub_core::volumes::list_volumes()) {
+    match zbus::block_on(zinnia_core::volumes::list_volumes()) {
         Ok(report) => {
             println!("source: {:?} {:?}", report.source, report.fallback_reason);
             println!("{}", serde_json::to_string_pretty(&report.drives).unwrap());
@@ -1835,10 +1835,10 @@ fn main() {
 
 - [ ] **Step 6: Verify against the live system**
 
-Run: `cargo run -p diskhub-core --example volumes`
+Run: `cargo run -p zinnia-core --example volumes`
 Expected: `source: Udisks2 None`, then JSON with two drives. The Samsung entry has two volumes, one `/dev/mapper/root` with four mount points and `"encrypted": true`, one `/dev/nvme0n1p1` mounted at `/boot`. The Crucial entry has one volume `/dev/sda1` with `"usage": null`.
 
-Then simulate no udisks2: `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent cargo run -p diskhub-core --example volumes`
+Then simulate no udisks2: `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent cargo run -p zinnia-core --example volumes`
 Expected: `source: MountinfoFallback Some(...)`, two drives named `root` and `nvme0n1p1`.
 
 - [ ] **Step 7: Commit**
@@ -1914,7 +1914,7 @@ Add `pub mod watch;` to `crates/core/src/volumes/mod.rs` and re-export: `pub use
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p diskhub-core watch`
+Run: `cargo test -p zinnia-core watch`
 Expected: compile error, `classify` not found.
 
 - [ ] **Step 3: Write the watcher**
@@ -1991,8 +1991,8 @@ use futures_lite::StreamExt;
 
 fn main() {
     zbus::block_on(async {
-        let conn = diskhub_core::volumes::udisks::connect().await.expect("system bus");
-        let mut changes = diskhub_core::volumes::watch(&conn).await.expect("watch");
+        let conn = zinnia_core::volumes::udisks::connect().await.expect("system bus");
+        let mut changes = zinnia_core::volumes::watch(&conn).await.expect("watch");
         eprintln!("watching udisks2; press Ctrl+C to stop");
         while let Some(change) = changes.next().await {
             println!("{change:?}");
@@ -2003,16 +2003,16 @@ fn main() {
 
 - [ ] **Step 4: Run the unit tests to verify they pass**
 
-Run: `cargo test -p diskhub-core watch`
+Run: `cargo test -p zinnia-core watch`
 Expected: 3 passed.
 
 - [ ] **Step 5: Verify live**
 
-Terminal 1: `cargo run -p diskhub-core --example watch`
+Terminal 1: `cargo run -p zinnia-core --example watch`
 Terminal 2:
 ```bash
-truncate -s 16M /tmp/diskhub-loop.img
-udisksctl loop-setup -f /tmp/diskhub-loop.img      # polkit may prompt once
+truncate -s 16M /tmp/zinnia-loop.img
+udisksctl loop-setup -f /tmp/zinnia-loop.img      # polkit may prompt once
 udisksctl loop-delete -b /dev/loop0                 # use the device loop-setup printed
 ```
 Expected in terminal 1: `ObjectsAdded` after loop-setup, `ObjectsRemoved` after loop-delete. Nothing prints while idle, even though udisks2 refreshes NVMe SMART properties in the background.
@@ -2027,18 +2027,18 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
 ---
-### Task 9: The `diskhub volumes` CLI
+### Task 9: The `zinnia volumes` CLI
 
 **Files:**
 - Create: `crates/core/src/format.rs`, `crates/cli/src/table.rs`
 - Modify: `crates/core/src/lib.rs`, `crates/cli/src/main.rs`
 
 **Interfaces:**
-- Consumes: `diskhub_core::volumes::list_volumes`, `diskhub_core::{Drive, Volume}`.
+- Consumes: `zinnia_core::volumes::list_volumes`, `zinnia_core::{Drive, Volume}`.
 - Produces:
-  - `diskhub_core::format::human_size(bytes: u64) -> String` (1024-based, `B K M G T P`; one decimal below 10, integer otherwise). Lives in core so the app reuses it.
+  - `zinnia_core::format::human_size(bytes: u64) -> String` (1024-based, `B K M G T P`; one decimal below 10, integer otherwise). Lives in core so the app reuses it.
   - `table::render_table(drives: &[Drive]) -> String` and `table::render_json(drives: &[Drive]) -> String`.
-  - Binary `diskhub volumes [--json]`, exit 0 on success, 1 on failure.
+  - Binary `zinnia volumes [--json]`, exit 0 on success, 1 on failure.
 
 - [ ] **Step 1: Write the failing human-size tests**
 
@@ -2077,7 +2077,7 @@ mod tests {
 
 Add `pub mod format;` to `crates/core/src/lib.rs` after `pub mod error;`.
 
-Run: `cargo test -p diskhub-core format`
+Run: `cargo test -p zinnia-core format`
 Expected: compile error, `human_size` not found.
 
 - [ ] **Step 3: Write human_size**
@@ -2108,7 +2108,7 @@ pub fn human_size(bytes: u64) -> String {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p diskhub-core format`
+Run: `cargo test -p zinnia-core format`
 Expected: 3 passed.
 
 - [ ] **Step 5: Write the failing table tests**
@@ -2118,7 +2118,7 @@ Expected: 3 passed.
 #[cfg(test)]
 mod tests {
     use super::*;
-    use diskhub_core::{MountPoint, Transport, Usage, Volume};
+    use zinnia_core::{MountPoint, Transport, Usage, Volume};
     use std::path::PathBuf;
 
     const G: u64 = 1024 * 1024 * 1024;
@@ -2221,7 +2221,7 @@ mod tests {
 
 Add `mod table;` to `crates/cli/src/main.rs`.
 
-Run: `cargo test -p diskhub-cli table`
+Run: `cargo test -p zinnia-cli table`
 Expected: compile error, `render_table` not found.
 
 - [ ] **Step 7: Write the renderers**
@@ -2230,8 +2230,8 @@ Prepend to `crates/cli/src/table.rs`:
 ```rust
 //! Text renderers for the volumes report.
 
-use diskhub_core::format::human_size;
-use diskhub_core::{Drive, Volume};
+use zinnia_core::format::human_size;
+use zinnia_core::{Drive, Volume};
 
 const HEADER: [&str; 7] = ["DEVICE", "FS", "SIZE", "USED", "AVAIL", "USE%", "MOUNTS"];
 
@@ -2305,7 +2305,7 @@ fn percent(used: u64, available: u64) -> u64 {
 
 - [ ] **Step 8: Run the tests to verify they pass**
 
-Run: `cargo test -p diskhub-cli table`
+Run: `cargo test -p zinnia-cli table`
 Expected: 6 passed.
 
 - [ ] **Step 9: Wire the binary**
@@ -2317,7 +2317,7 @@ mod table;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "diskhub", version, about = "Disk hub for Arch Linux")]
+#[command(name = "zinnia", version, about = "Disk hub for Arch Linux")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -2342,7 +2342,7 @@ fn main() {
 }
 
 fn run_volumes(json: bool) -> i32 {
-    match zbus::block_on(diskhub_core::volumes::list_volumes()) {
+    match zbus::block_on(zinnia_core::volumes::list_volumes()) {
         Ok(report) => {
             if json {
                 println!("{}", table::render_json(&report.drives));
@@ -2358,7 +2358,7 @@ fn run_volumes(json: bool) -> i32 {
             if json {
                 println!("[]");
             }
-            eprintln!("diskhub: {e}");
+            eprintln!("zinnia: {e}");
             1
         }
     }
@@ -2369,9 +2369,9 @@ fn run_volumes(json: bool) -> i32 {
 
 Run:
 ```bash
-cargo run -q -p diskhub-cli -- volumes
-cargo run -q -p diskhub-cli -- volumes --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), "drives;", sum(len(x["volumes"]) for x in d), "volumes")'
-cargo run -q -p diskhub-cli -- volumes --help
+cargo run -q -p zinnia-cli -- volumes
+cargo run -q -p zinnia-cli -- volumes --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d), "drives;", sum(len(x["volumes"]) for x in d), "volumes")'
+cargo run -q -p zinnia-cli -- volumes --help
 ```
 Expected: a table with the root btrfs row listing four mount points and `/dev/sda1` as `not mounted`; the JSON check prints `2 drives; 3 volumes`; help lists `--json`.
 
@@ -2379,7 +2379,7 @@ Expected: a table with the root btrfs row listing four mount points and `/dev/sd
 
 ```bash
 git add crates/core crates/cli
-git commit -m "Add diskhub volumes CLI with table and JSON output
+git commit -m "Add zinnia volumes CLI with table and JSON output
 
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
@@ -2389,34 +2389,34 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Modify: `crates/app/Cargo.toml`, `crates/app/src/main.rs`
-- Create: `crates/app/build.rs`, `crates/app/resources/diskhub.gresource.xml`, `crates/app/src/style.css`
+- Create: `crates/app/build.rs`, `crates/app/resources/zinnia.gresource.xml`, `crates/app/src/style.css`
 - Create: `crates/app/src/ui/window.blp`, `crates/app/src/config.rs`, `crates/app/src/application.rs`, `crates/app/src/window.rs`
-- Create: `data/io.github.brianirish.DiskHub.gschema.xml`, `scripts/dev-run.sh`
+- Create: `data/io.github.brianirish.Zinnia.gschema.xml`, `scripts/dev-run.sh`
 
 **Interfaces:**
 - Produces:
   - `config::{APP_ID, VERSION, RESOURCE_PATH}`.
   - `application::Application` (subclass of `adw::Application`), `Application::new()`, `Application::requested_target() -> Option<String>`.
   - `window::Window` (subclass of `adw::ApplicationWindow`), `Window::new(&Application)`, `Window::navigation() -> adw::NavigationView`, `Window::toast(&str)`.
-  - gresource prefix `/io/github/brianirish/DiskHub`, template resource `/io/github/brianirish/DiskHub/window.ui`.
-  - Later tasks add `.ui` entries to `resources/diskhub.gresource.xml` and `.blp` files under `src/ui/`; `build.rs` picks every `.blp` up automatically.
+  - gresource prefix `/io/github/brianirish/Zinnia`, template resource `/io/github/brianirish/Zinnia/window.ui`.
+  - Later tasks add `.ui` entries to `resources/zinnia.gresource.xml` and `.blp` files under `src/ui/`; `build.rs` picks every `.blp` up automatically.
 
 - [ ] **Step 1: Declare dependencies and the build script**
 
 Replace `crates/app/Cargo.toml`:
 ```toml
 [package]
-name = "diskhub-app"
+name = "zinnia-app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "diskhub-app"
+name = "zinnia-app"
 path = "src/main.rs"
 
 [dependencies]
-diskhub-core.workspace = true
+zinnia-core.workspace = true
 gtk.workspace = true
 adw.workspace = true
 toml.workspace = true
@@ -2455,21 +2455,21 @@ fn main() {
         .expect("blueprint-compiler is required: pacman -S blueprint-compiler");
     assert!(status.success(), "blueprint-compiler failed");
 
-    println!("cargo:rerun-if-changed=resources/diskhub.gresource.xml");
+    println!("cargo:rerun-if-changed=resources/zinnia.gresource.xml");
     println!("cargo:rerun-if-changed=src/style.css");
     glib_build_tools::compile_resources(
         &[ui_out.to_str().unwrap(), "src", "resources"],
-        "resources/diskhub.gresource.xml",
-        "diskhub.gresource",
+        "resources/zinnia.gresource.xml",
+        "zinnia.gresource",
     );
 }
 ```
 
-`crates/app/resources/diskhub.gresource.xml`:
+`crates/app/resources/zinnia.gresource.xml`:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/io/github/brianirish/DiskHub">
+  <gresource prefix="/io/github/brianirish/Zinnia">
     <file compressed="true" preprocess="xml-stripblanks">window.ui</file>
     <file compressed="true">style.css</file>
   </gresource>
@@ -2488,8 +2488,8 @@ fn main() {
 using Gtk 4.0;
 using Adw 1;
 
-template $DiskHubWindow : Adw.ApplicationWindow {
-  title: "diskhub";
+template $ZinniaWindow : Adw.ApplicationWindow {
+  title: "Zinnia";
   default-width: 900;
   default-height: 640;
   width-request: 360;
@@ -2521,9 +2521,9 @@ template $DiskHubWindow : Adw.ApplicationWindow {
 
 `crates/app/src/config.rs`:
 ```rust
-pub const APP_ID: &str = "io.github.brianirish.DiskHub";
+pub const APP_ID: &str = "io.github.brianirish.Zinnia";
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const RESOURCE_PATH: &str = "/io/github/brianirish/DiskHub";
+pub const RESOURCE_PATH: &str = "/io/github/brianirish/Zinnia";
 ```
 
 `crates/app/src/application.rs`:
@@ -2546,7 +2546,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for Application {
-        const NAME: &'static str = "DiskHubApplication";
+        const NAME: &'static str = "ZinniaApplication";
         type Type = super::Application;
         type ParentType = adw::Application;
     }
@@ -2630,7 +2630,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, CompositeTemplate)]
-    #[template(resource = "/io/github/brianirish/DiskHub/window.ui")]
+    #[template(resource = "/io/github/brianirish/Zinnia/window.ui")]
     pub struct Window {
         #[template_child]
         pub navigation: TemplateChild<adw::NavigationView>,
@@ -2640,7 +2640,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for Window {
-        const NAME: &'static str = "DiskHubWindow";
+        const NAME: &'static str = "ZinniaWindow";
         type Type = super::Window;
         type ParentType = adw::ApplicationWindow;
 
@@ -2705,7 +2705,7 @@ mod window;
 use gtk::{gio, glib, prelude::*};
 
 fn main() -> glib::ExitCode {
-    gio::resources_register_include!("diskhub.gresource")
+    gio::resources_register_include!("zinnia.gresource")
         .expect("gresource is compiled into the binary by build.rs");
     application::Application::new().run()
 }
@@ -2713,11 +2713,11 @@ fn main() -> glib::ExitCode {
 
 - [ ] **Step 4: Write the gschema and the dev runner**
 
-`data/io.github.brianirish.DiskHub.gschema.xml`:
+`data/io.github.brianirish.Zinnia.gschema.xml`:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="diskhub">
-  <schema id="io.github.brianirish.DiskHub" path="/io/github/brianirish/DiskHub/">
+<schemalist gettext-domain="zinnia">
+  <schema id="io.github.brianirish.Zinnia" path="/io/github/brianirish/Zinnia/">
     <key name="window-width" type="i">
       <default>900</default>
       <summary>Window width</summary>
@@ -2737,26 +2737,26 @@ fn main() -> glib::ExitCode {
 `scripts/dev-run.sh` (then `chmod +x scripts/dev-run.sh`):
 ```bash
 #!/usr/bin/env bash
-# Run diskhub-app from the source tree with its gschema compiled to a temp dir.
+# Run zinnia-app from the source tree with its gschema compiled to a temp dir.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 schemas=$(mktemp -d)
 trap 'rm -rf "$schemas"' EXIT
-cp "$root/data/io.github.brianirish.DiskHub.gschema.xml" "$schemas/"
+cp "$root/data/io.github.brianirish.Zinnia.gschema.xml" "$schemas/"
 glib-compile-schemas "$schemas"
 cd "$root"
-GSETTINGS_SCHEMA_DIR="$schemas" exec cargo run -p diskhub-app -- "$@"
+GSETTINGS_SCHEMA_DIR="$schemas" exec cargo run -p zinnia-app -- "$@"
 ```
 
 - [ ] **Step 5: Build and run**
 
-Run: `cargo build -p diskhub-app`
+Run: `cargo build -p zinnia-app`
 Expected: builds; `build.rs` compiles `window.blp` and the gresource. If it fails with `blueprint-compiler: not found`, Task 1 Step 1 was skipped.
 
 Run: `./scripts/dev-run.sh`
-Expected: a window titled `diskhub` with a header bar and a status page. Resize it, close it, run again: the new size is restored. While it is open, run `./scripts/dev-run.sh` in a second terminal: no second window appears, the first is focused, and the second command exits.
+Expected: a window titled `zinnia` with a header bar and a status page. Resize it, close it, run again: the new size is restored. While it is open, run `./scripts/dev-run.sh` in a second terminal: no second window appears, the first is focused, and the second command exits.
 
-Run: `dconf read /io/github/brianirish/DiskHub/window-width`
+Run: `dconf read /io/github/brianirish/Zinnia/window-width`
 Expected: the width you resized to.
 
 - [ ] **Step 6: Commit**
@@ -2919,7 +2919,7 @@ Add `mod shortcuts;` to `crates/app/src/main.rs`.
 
 - [ ] **Step 4: Build and verify by hand**
 
-Run: `cargo build -p diskhub-app && ./scripts/dev-run.sh`
+Run: `cargo build -p zinnia-app && ./scripts/dev-run.sh`
 Expected, in the window:
 - `?` opens a shortcuts dialog with three sections; `Escape` closes it.
 - `Ctrl+R` shows a toast reading `Refresh does nothing on this page yet`; `j`, `k`, `l`, `1`, `Ctrl+Tab` show matching toasts.
@@ -3012,7 +3012,7 @@ Add `mod widgets;` to `crates/app/src/main.rs`. Create an empty `crates/app/src/
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p diskhub-app geometry`
+Run: `cargo test -p zinnia-app geometry`
 Expected: compile error, `fraction` not found.
 
 - [ ] **Step 3: Write the geometry**
@@ -3073,7 +3073,7 @@ pub fn large_arc(fraction: f64) -> bool {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p diskhub-app geometry`
+Run: `cargo test -p zinnia-app geometry`
 Expected: 5 passed.
 
 - [ ] **Step 5: Write the widget**
@@ -3101,7 +3101,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for UsageRing {
-        const NAME: &'static str = "DiskHubUsageRing";
+        const NAME: &'static str = "ZinniaUsageRing";
         type Type = super::UsageRing;
         type ParentType = gtk::Widget;
 
@@ -3222,7 +3222,7 @@ usage-ring.error {
 
 - [ ] **Step 6: Build**
 
-Run: `cargo build -p diskhub-app`
+Run: `cargo build -p zinnia-app`
 Expected: builds with no warnings about unused items other than `UsageRing` itself (Task 13 uses it).
 
 - [ ] **Step 7: Commit**
@@ -3240,13 +3240,13 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `crates/app/src/ui/overview_page.blp`, `crates/app/src/pages/mod.rs`, `crates/app/src/pages/overview.rs`, `crates/app/src/pages/volume_row.rs`
-- Modify: `crates/app/resources/diskhub.gresource.xml`, `crates/app/src/ui/window.blp`, `crates/app/src/window.rs`, `crates/app/src/main.rs`
+- Modify: `crates/app/resources/zinnia.gresource.xml`, `crates/app/src/ui/window.blp`, `crates/app/src/window.rs`, `crates/app/src/main.rs`
 
 **Interfaces:**
-- Consumes: `diskhub_core::volumes::{list_volumes, watch, udisks::connect, Source, VolumesReport}`, `diskhub_core::format::human_size`, `widgets::usage_ring::UsageRing`, `widgets::geometry::fraction`, `Window::{toast, dispatch, PageAction}`.
+- Consumes: `zinnia_core::volumes::{list_volumes, watch, udisks::connect, Source, VolumesReport}`, `zinnia_core::format::human_size`, `widgets::usage_ring::UsageRing`, `widgets::geometry::fraction`, `Window::{toast, dispatch, PageAction}`.
 - Produces:
-  - `pages::overview::OverviewPage` (subclass of `adw::NavigationPage`, GType `DiskHubOverviewPage`): `reload()`, `focus_next()`, `focus_prev()`, `activate_focused()`, and the signal-free hook `open_row(&VolumeRow)` that Task 14 rewrites to push the drive page.
-  - `pages::volume_row::VolumeRow` (subclass of `adw::ActionRow`, GType `DiskHubVolumeRow`): `new(&Drive, &Volume)`, `drive() -> Drive`, `volume() -> Volume`.
+  - `pages::overview::OverviewPage` (subclass of `adw::NavigationPage`, GType `ZinniaOverviewPage`): `reload()`, `focus_next()`, `focus_prev()`, `activate_focused()`, and the signal-free hook `open_row(&VolumeRow)` that Task 14 rewrites to push the drive page.
+  - `pages::volume_row::VolumeRow` (subclass of `adw::ActionRow`, GType `ZinniaVolumeRow`): `new(&Drive, &Volume)`, `drive() -> Drive`, `volume() -> Volume`.
   - `Window::dispatch` gains the overview arm.
 
 - [ ] **Step 1: Write the page template**
@@ -3256,7 +3256,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 using Gtk 4.0;
 using Adw 1;
 
-template $DiskHubOverviewPage : Adw.NavigationPage {
+template $ZinniaOverviewPage : Adw.NavigationPage {
   title: "Volumes";
   tag: "overview";
 
@@ -3356,7 +3356,7 @@ menu primary_menu {
 }
 ```
 
-Add to `crates/app/resources/diskhub.gresource.xml` inside the `<gresource>` element:
+Add to `crates/app/resources/zinnia.gresource.xml` inside the `<gresource>` element:
 ```xml
     <file compressed="true" preprocess="xml-stripblanks">overview_page.ui</file>
 ```
@@ -3376,8 +3376,8 @@ pub mod volume_row;
 use crate::widgets::geometry::fraction;
 use crate::widgets::usage_ring::UsageRing;
 use adw::subclass::prelude::*;
-use diskhub_core::format::human_size;
-use diskhub_core::{Drive, Volume};
+use zinnia_core::format::human_size;
+use zinnia_core::{Drive, Volume};
 use gtk::{glib, prelude::*};
 use std::cell::RefCell;
 
@@ -3392,7 +3392,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for VolumeRow {
-        const NAME: &'static str = "DiskHubVolumeRow";
+        const NAME: &'static str = "ZinniaVolumeRow";
         type Type = super::VolumeRow;
         type ParentType = adw::ActionRow;
     }
@@ -3473,9 +3473,9 @@ impl VolumeRow {
 use crate::pages::volume_row::VolumeRow;
 use crate::window::Window;
 use adw::subclass::prelude::*;
-use diskhub_core::format::human_size;
-use diskhub_core::volumes::{self, Source, VolumesReport};
-use diskhub_core::{Drive, Transport};
+use zinnia_core::format::human_size;
+use zinnia_core::volumes::{self, Source, VolumesReport};
+use zinnia_core::{Drive, Transport};
 use futures_lite::StreamExt;
 use gtk::{glib, prelude::*, CompositeTemplate};
 use std::cell::{Cell, RefCell};
@@ -3489,7 +3489,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, CompositeTemplate)]
-    #[template(resource = "/io/github/brianirish/DiskHub/overview_page.ui")]
+    #[template(resource = "/io/github/brianirish/Zinnia/overview_page.ui")]
     pub struct OverviewPage {
         #[template_child]
         pub banner: TemplateChild<adw::Banner>,
@@ -3508,7 +3508,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for OverviewPage {
-        const NAME: &'static str = "DiskHubOverviewPage";
+        const NAME: &'static str = "ZinniaOverviewPage";
         type Type = super::OverviewPage;
         type ParentType = adw::NavigationPage;
 
@@ -3749,7 +3749,7 @@ fn drive_icon(drive: &Drive) -> &'static str {
 
 Replace the `Adw.NavigationPage { ... }` block inside `Adw.NavigationView navigation` in `crates/app/src/ui/window.blp` with:
 ```
-      $DiskHubOverviewPage overview {}
+      $ZinniaOverviewPage overview {}
 ```
 
 In `crates/app/src/window.rs`:
@@ -3781,12 +3781,12 @@ Add `mod pages;` to `crates/app/src/main.rs`.
 
 - [ ] **Step 5: Build and verify by hand**
 
-Run: `cargo build -p diskhub-app && ./scripts/dev-run.sh`
+Run: `cargo build -p zinnia-app && ./scripts/dev-run.sh`
 Expected:
 - A brief spinner, then two groups: `Crucial_CT480M500SSD1` with `SATA · 447G` and one row `SSD_480GB` reading `ntfs · Not mounted`, ring empty; `Samsung SSD 960 PRO 512GB` with `NVMe · 477G` and two rows: `/dev/mapper/root` with `btrfs · /, /home, /var/cache/pacman/pkg, /var/log`, a lock icon, a ring about a third full in the accent color, and `/dev/nvme0n1p1` with `vfat · /boot`.
 - `j` and `k` move focus between rows across both groups; `l` and `Enter` show an `Opening /dev/...` toast; clicking a row does the same.
 - `Ctrl+R` reloads without flashing the spinner.
-- In another terminal, `truncate -s 16M /tmp/diskhub-loop.img && udisksctl loop-setup -f /tmp/diskhub-loop.img`: the list reloads within about a second and shows no new row (loop devices are filtered). `udisksctl loop-delete -b /dev/loopN` reloads again.
+- In another terminal, `truncate -s 16M /tmp/zinnia-loop.img && udisksctl loop-setup -f /tmp/zinnia-loop.img`: the list reloads within about a second and shows no new row (loop devices are filtered). `udisksctl loop-delete -b /dev/loopN` reloads again.
 - `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent ./scripts/dev-run.sh`: a banner reads `Drive grouping is unavailable because udisks2 could not be reached` and groups are named `root` and `nvme0n1p1`.
 
 - [ ] **Step 6: Commit**
@@ -3803,12 +3803,12 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `crates/app/src/ui/drive_page.blp`, `crates/app/src/pages/drive.rs`
-- Modify: `crates/app/resources/diskhub.gresource.xml`, `crates/app/src/pages/mod.rs`, `crates/app/src/pages/overview.rs`, `crates/app/src/window.rs`
+- Modify: `crates/app/resources/zinnia.gresource.xml`, `crates/app/src/pages/mod.rs`, `crates/app/src/pages/overview.rs`, `crates/app/src/window.rs`
 
 **Interfaces:**
-- Consumes: `VolumeRow::{drive, volume}`, `Window::{navigation, dispatch, PageAction}`, `diskhub_core::volumes::list_volumes`, `diskhub_core::format::human_size`.
+- Consumes: `VolumeRow::{drive, volume}`, `Window::{navigation, dispatch, PageAction}`, `zinnia_core::volumes::list_volumes`, `zinnia_core::format::human_size`.
 - Produces:
-  - `pages::drive::DrivePage` (subclass of `adw::NavigationPage`, GType `DiskHubDrivePage`): `new(&Drive, &Volume)`, `select_view(n: i32)` for 1..=4, `cycle_view()`, `refresh()`.
+  - `pages::drive::DrivePage` (subclass of `adw::NavigationPage`, GType `ZinniaDrivePage`): `new(&Drive, &Volume)`, `select_view(n: i32)` for 1..=4, `cycle_view()`, `refresh()`.
   - View names in order: `usage`, `health`, `benchmark`, `details`.
   - `OverviewPage::open_row` now pushes a `DrivePage`.
 
@@ -3819,7 +3819,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 using Gtk 4.0;
 using Adw 1;
 
-template $DiskHubDrivePage : Adw.NavigationPage {
+template $ZinniaDrivePage : Adw.NavigationPage {
   tag: "drive";
 
   child: Adw.ToolbarView {
@@ -3904,7 +3904,7 @@ template $DiskHubDrivePage : Adw.NavigationPage {
 }
 ```
 
-Add to `crates/app/resources/diskhub.gresource.xml`:
+Add to `crates/app/resources/zinnia.gresource.xml`:
 ```xml
     <file compressed="true" preprocess="xml-stripblanks">drive_page.ui</file>
 ```
@@ -3917,9 +3917,9 @@ Add to `crates/app/resources/diskhub.gresource.xml`:
 
 use crate::window::Window;
 use adw::subclass::prelude::*;
-use diskhub_core::format::human_size;
-use diskhub_core::volumes;
-use diskhub_core::{Drive, Volume};
+use zinnia_core::format::human_size;
+use zinnia_core::volumes;
+use zinnia_core::{Drive, Volume};
 use gtk::{glib, prelude::*, CompositeTemplate};
 use std::cell::RefCell;
 
@@ -3929,7 +3929,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, CompositeTemplate)]
-    #[template(resource = "/io/github/brianirish/DiskHub/drive_page.ui")]
+    #[template(resource = "/io/github/brianirish/Zinnia/drive_page.ui")]
     pub struct DrivePage {
         #[template_child]
         pub views: TemplateChild<adw::ViewStack>,
@@ -3945,7 +3945,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for DrivePage {
-        const NAME: &'static str = "DiskHubDrivePage";
+        const NAME: &'static str = "ZinniaDrivePage";
         type Type = super::DrivePage;
         type ParentType = adw::NavigationPage;
 
@@ -4114,7 +4114,7 @@ In `crates/app/src/window.rs`, add `use crate::pages::drive::DrivePage;` and ins
 
 - [ ] **Step 4: Build and verify by hand**
 
-Run: `cargo build -p diskhub-app && ./scripts/dev-run.sh`
+Run: `cargo build -p zinnia-app && ./scripts/dev-run.sh`
 Expected:
 - Activating the `/dev/mapper/root` row slides in a page titled `/dev/mapper/root` with a four-view switcher in the header, opened on Usage showing `Coming in a later release`.
 - `4` jumps to Details: a Drive group (Model, Serial, Vendor, Transport `NVMe`, Rotational `No`, Removable `No`, Size), a Volume group (Device, Filesystem `btrfs`, Label `None`, UUID, Encrypted `Yes, on /dev/nvme0n1p2`, Size, Used, Available) and a Mount Points group with four rows whose subtitles list options such as `subvol=/@home`.
@@ -4226,7 +4226,7 @@ Add `mod theme;` to `crates/app/src/main.rs`.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p diskhub-app omarchy`
+Run: `cargo test -p zinnia-app omarchy`
 Expected: compile error, `parse` not found.
 
 - [ ] **Step 3: Write the parser and CSS builder**
@@ -4299,7 +4299,7 @@ pub fn css(theme: &Theme) -> String {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p diskhub-app omarchy`
+Run: `cargo test -p zinnia-app omarchy`
 Expected: 5 passed.
 
 - [ ] **Step 5: Install the provider and the directory monitor**
@@ -4354,7 +4354,7 @@ pub fn install(app: &Application) {
             ));
             app.imp().theme_monitor.replace(Some(monitor));
         }
-        Err(e) => glib::g_debug!("diskhub", "theme monitor unavailable: {e}"),
+        Err(e) => glib::g_debug!("zinnia", "theme monitor unavailable: {e}"),
     }
 }
 
@@ -4367,7 +4367,7 @@ fn apply(app: &Application, provider: &gtk::CssProvider, colors: &PathBuf) {
         None => {
             provider.load_from_string("");
             app.imp().palette.replace(None);
-            glib::g_debug!("diskhub", "omarchy colors unreadable at {}, using stock look", colors.display());
+            glib::g_debug!("zinnia", "omarchy colors unreadable at {}, using stock look", colors.display());
         }
     }
 }
@@ -4390,7 +4390,7 @@ In `crates/app/src/application.rs`:
 
 - [ ] **Step 6: Build and verify by hand**
 
-Run: `cargo build -p diskhub-app && ./scripts/dev-run.sh`
+Run: `cargo build -p zinnia-app && ./scripts/dev-run.sh`
 Expected: the usage ring, the Retry button and focused-row highlights use the Omarchy accent rather than Adwaita blue. Then, with the app still open:
 ```bash
 omarchy theme set tokyo-night
@@ -4413,24 +4413,24 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 16: Desktop data, meson build, PKGBUILD, CI and README
 
 **Files:**
-- Create: `data/io.github.brianirish.DiskHub.desktop.in`, `data/io.github.brianirish.DiskHub.metainfo.xml.in`
-- Create: `data/icons/hicolor/scalable/apps/io.github.brianirish.DiskHub.svg`, `data/icons/hicolor/symbolic/apps/io.github.brianirish.DiskHub-symbolic.svg`
+- Create: `data/io.github.brianirish.Zinnia.desktop.in`, `data/io.github.brianirish.Zinnia.metainfo.xml.in`
+- Create: `data/icons/hicolor/scalable/apps/io.github.brianirish.Zinnia.svg`, `data/icons/hicolor/symbolic/apps/io.github.brianirish.Zinnia-symbolic.svg`
 - Create: `data/meson.build`, `meson.build`, `build-aux/cargo.sh`, `packaging/PKGBUILD`, `.github/workflows/ci.yml`
 - Modify: `README.md`
 
 **Interfaces:**
 - Consumes: the two binaries, the gschema from Task 10.
-- Produces: `meson setup build && meson compile -C build && meson install -C build` installs `diskhub`, `diskhub-app`, the desktop entry, metainfo, gschema and icons; a PKGBUILD that builds from a release tarball; CI that runs tests and the meson build on Arch.
+- Produces: `meson setup build && meson compile -C build && meson install -C build` installs `zinnia`, `zinnia-app`, the desktop entry, metainfo, gschema and icons; a PKGBUILD that builds from a release tarball; CI that runs tests and the meson build on Arch.
 
 - [ ] **Step 1: Desktop entry, metainfo and icons**
 
-`data/io.github.brianirish.DiskHub.desktop.in`:
+`data/io.github.brianirish.Zinnia.desktop.in`:
 ```
 [Desktop Entry]
-Name=diskhub
+Name=Zinnia
 Comment=Drives, volumes and disk usage
-Exec=diskhub-app %u
-Icon=io.github.brianirish.DiskHub
+Exec=zinnia-app %u
+Icon=io.github.brianirish.Zinnia
 Terminal=false
 Type=Application
 Categories=System;Utility;GTK;
@@ -4438,21 +4438,21 @@ Keywords=disk;drive;volume;usage;storage;
 StartupNotify=true
 ```
 
-`data/io.github.brianirish.DiskHub.metainfo.xml.in`:
+`data/io.github.brianirish.Zinnia.metainfo.xml.in`:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.brianirish.DiskHub</id>
+  <id>io.github.brianirish.Zinnia</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
-  <name>diskhub</name>
+  <name>Zinnia</name>
   <summary>Drives, volumes and disk usage</summary>
   <description>
-    <p>A disk hub for Arch Linux. See every drive and volume with live usage, then dig into details. Scanning, drive health and benchmarks follow in later releases. A CLI twin, diskhub, prints the same data as a table or JSON.</p>
+    <p>A disk hub for Arch Linux. See every drive and volume with live usage, then dig into details. Scanning, drive health and benchmarks follow in later releases. A CLI twin, zinnia, prints the same data as a table or JSON.</p>
   </description>
-  <launchable type="desktop-id">io.github.brianirish.DiskHub.desktop</launchable>
-  <url type="homepage">https://github.com/brianirish/diskhub</url>
-  <url type="bugtracker">https://github.com/brianirish/diskhub/issues</url>
+  <launchable type="desktop-id">io.github.brianirish.Zinnia.desktop</launchable>
+  <url type="homepage">https://github.com/brianirish/zinnia</url>
+  <url type="bugtracker">https://github.com/brianirish/zinnia/issues</url>
   <developer id="io.github.brianirish">
     <name>Brian Irish</name>
   </developer>
@@ -4463,7 +4463,7 @@ StartupNotify=true
 </component>
 ```
 
-`data/icons/hicolor/scalable/apps/io.github.brianirish.DiskHub.svg`:
+`data/icons/hicolor/scalable/apps/io.github.brianirish.Zinnia.svg`:
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <rect width="128" height="128" rx="28" fill="#1e1e2e"/>
@@ -4472,7 +4472,7 @@ StartupNotify=true
 </svg>
 ```
 
-`data/icons/hicolor/symbolic/apps/io.github.brianirish.DiskHub-symbolic.svg`:
+`data/icons/hicolor/symbolic/apps/io.github.brianirish.Zinnia-symbolic.svg`:
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
   <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 2a5 5 0 1 1 0 10A5 5 0 0 1 8 3z" fill="#2e3436"/>
@@ -4484,7 +4484,7 @@ StartupNotify=true
 
 `meson.build`:
 ```meson
-project('diskhub',
+project('zinnia',
   version: '0.1.0',
   meson_version: '>= 1.0.0',
   license: 'MIT',
@@ -4494,14 +4494,14 @@ gnome = import('gnome')
 cargo = find_program('cargo', required: true)
 find_program('blueprint-compiler', required: true)
 
-app_id = 'io.github.brianirish.DiskHub'
+app_id = 'io.github.brianirish.Zinnia'
 cargo_target_dir = meson.project_build_root() / 'cargo-target'
 cargo_profile = get_option('buildtype') == 'debug' ? 'debug' : 'release'
 
 custom_target('cargo-build',
   build_by_default: true,
   build_always_stale: true,
-  output: ['diskhub', 'diskhub-app'],
+  output: ['zinnia', 'zinnia-app'],
   console: true,
   install: true,
   install_dir: get_option('bindir'),
@@ -4534,8 +4534,8 @@ if [[ $profile == release ]]; then
 else
   cargo build --workspace --locked
 fi
-cp "$target/$profile/diskhub" "$outdir/diskhub"
-cp "$target/$profile/diskhub-app" "$outdir/diskhub-app"
+cp "$target/$profile/zinnia" "$outdir/zinnia"
+cp "$target/$profile/zinnia-app" "$outdir/zinnia-app"
 ```
 
 `data/meson.build`:
@@ -4587,13 +4587,13 @@ rm -rf stage
 ```
 Expected file list:
 ```
-stage/usr/local/bin/diskhub
-stage/usr/local/bin/diskhub-app
-stage/usr/local/share/applications/io.github.brianirish.DiskHub.desktop
-stage/usr/local/share/glib-2.0/schemas/io.github.brianirish.DiskHub.gschema.xml
-stage/usr/local/share/icons/hicolor/scalable/apps/io.github.brianirish.DiskHub.svg
-stage/usr/local/share/icons/hicolor/symbolic/apps/io.github.brianirish.DiskHub-symbolic.svg
-stage/usr/local/share/metainfo/io.github.brianirish.DiskHub.metainfo.xml
+stage/usr/local/bin/zinnia
+stage/usr/local/bin/zinnia-app
+stage/usr/local/share/applications/io.github.brianirish.Zinnia.desktop
+stage/usr/local/share/glib-2.0/schemas/io.github.brianirish.Zinnia.gschema.xml
+stage/usr/local/share/icons/hicolor/scalable/apps/io.github.brianirish.Zinnia.svg
+stage/usr/local/share/icons/hicolor/symbolic/apps/io.github.brianirish.Zinnia-symbolic.svg
+stage/usr/local/share/metainfo/io.github.brianirish.Zinnia.metainfo.xml
 ```
 If `desktop-file-validate` or `appstreamcli` is installed, also run them on the staged desktop entry and metainfo; both should print nothing.
 
@@ -4602,12 +4602,12 @@ If `desktop-file-validate` or `appstreamcli` is installed, also run them on the 
 `packaging/PKGBUILD`:
 ```bash
 # Maintainer: Brian Irish <irishb@gmail.com>
-pkgname=diskhub
+pkgname=zinnia
 pkgver=0.1.0
 pkgrel=1
 pkgdesc="Drives, volumes and disk usage: a GTK4 disk hub with a CLI twin"
 arch=('x86_64')
-url="https://github.com/brianirish/diskhub"
+url="https://github.com/brianirish/zinnia"
 license=('MIT')
 depends=('gtk4' 'libadwaita' 'udisks2' 'hicolor-icon-theme')
 makedepends=('rust' 'meson' 'ninja' 'blueprint-compiler')
@@ -4633,7 +4633,7 @@ package() {
 The checksum stays `SKIP` until the `v0.1.0` tag exists on GitHub; at release time run `updpkgsums` in `packaging/` and commit the result before pushing to the AUR.
 
 Run: `bash -n packaging/PKGBUILD && (cd packaging && makepkg --printsrcinfo)`
-Expected: `.SRCINFO` text on stdout naming `pkgname = diskhub`, the depends and makedepends lists.
+Expected: `.SRCINFO` text on stdout naming `pkgname = zinnia`, the depends and makedepends lists.
 
 - [ ] **Step 5: CI**
 
@@ -4667,15 +4667,15 @@ jobs:
 
 Replace `README.md`:
 ```markdown
-# diskhub
+# zinnia
 
 A disk hub for Arch Linux: the speed, scriptability and keyboard flow of
 terminal tools with the polish of a native GTK4 and libadwaita app.
 
-- `diskhub-app` shows every drive and volume with a live usage ring, and a
+- `zinnia-app` shows every drive and volume with a live usage ring, and a
   per-volume page with full details. Usage scanning with a sunburst, drive
   health and benchmarks are on the roadmap.
-- `diskhub` is the CLI twin. `diskhub volumes` prints a table; `--json` prints
+- `zinnia` is the CLI twin. `zinnia volumes` prints a table; `--json` prints
   the same data as JSON for scripts.
 - On Omarchy, the app takes its accent from the active theme and follows
   theme changes live.

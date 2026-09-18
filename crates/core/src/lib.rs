@@ -1,4 +1,4 @@
-//! diskhub core: drives, volumes, and later scanning, health and benchmarks.
+//! zinnia core: drives, volumes, and later scanning, health and benchmarks.
 //! No GTK or GLib dependency lives here.
 
 pub mod bench;

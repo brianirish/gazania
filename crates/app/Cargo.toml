@@ -1,12 +1,12 @@
 [package]
-name = "diskhub-app"
+name = "zinnia-app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "diskhub-app"
+name = "zinnia-app"
 path = "src/main.rs"
 
 [dependencies]
-diskhub-core.workspace = true
+zinnia-core.workspace = true
