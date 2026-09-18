@@ -2344,12 +2344,12 @@ fn main() {
 fn run_volumes(json: bool) -> i32 {
     match zbus::block_on(zinnia_core::volumes::list_volumes()) {
         Ok(report) => {
+            if let Some(reason) = &report.fallback_reason {
+                eprintln!("note: udisks2 unavailable ({reason}); drive grouping is off");
+            }
             if json {
                 println!("{}", table::render_json(&report.drives));
             } else {
-                if let Some(reason) = &report.fallback_reason {
-                    eprintln!("note: udisks2 unavailable ({reason}); drive grouping is off");
-                }
                 print!("{}", table::render_table(&report.drives));
             }
             0
@@ -4255,6 +4255,7 @@ brown = "#75493d"
     fn non_ascii_hex_is_rejected_without_panicking() {
         assert_eq!(Rgb::parse("#€234"), None);
         assert_eq!(Rgb::parse("#ééé"), None);
+        assert_eq!(Rgb::parse("#+f+f+f"), None);
         assert!(parse("accent = \"#€234\"").is_none());
     }
 }
@@ -4292,7 +4293,7 @@ impl Rgb {
     pub fn parse(hex: &str) -> Option<Rgb> {
         let hex = hex.trim().strip_prefix('#')?;
         // Byte-range slicing below is only safe on ASCII; the file is untrusted.
-        if hex.len() != 6 || !hex.is_ascii() {
+        if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
             return None;
         }
         let channel = |i: usize| u8::from_str_radix(&hex[i..i + 2], 16).ok();
@@ -5131,5 +5132,5 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ## Self-review notes
 
 - Every spec section maps to a task: workspace and packaging (1, 16), data model and errors (2), mountinfo and statvfs (3, 4), udisks2 sourcing with btrfs grouping and the encrypted link (5, 7), fallback (6), liveness (8, 13), app shell, keyboard, state and single instance (10, 11), theming (15), overview UI and ring (12, 13), details view (14), CLI (9), error handling (7, 9, 13, 14), tests (every core task, ring geometry, theme parser).
-- Deviations from the spec, all deliberate: the `BlockSource` trait became the plain `Snapshot` value; `tokio` was replaced by zbus's built-in executor; hint-ignore blocks are dropped only when unmounted because udisks2 flags the mounted `/boot` ESP; the shortcuts window is an `adw::ShortcutsDialog` built in code rather than a `gtk/help-overlay.ui` resource; `human_size` lives in core rather than the CLI so the app reuses it. The spec was updated to match.
+- Deviations from the spec, all deliberate: the `BlockSource` trait became the plain `Snapshot` value; `tokio` was replaced by zbus's built-in executor; hint-ignore blocks are dropped only when unmounted because udisks2 flags the mounted `/boot` ESP; the shortcuts window is an `adw::ShortcutsDialog` built in code rather than a `gtk/help-overlay.ui` resource; `human_size` lives in core rather than the CLI so the app reuses it. Blueprint files are compiled by `build.rs` rather than meson so plain `cargo build` works; unmodified keys use a window `ShortcutController` while modified keys stay application accelerators. The spec was updated to match.
 - `Ctrl+R` on the drive page re-enumerates and refills Details, which is the honest reading of "refresh the current page".

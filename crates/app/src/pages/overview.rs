@@ -301,3 +301,50 @@ fn drive_icon(drive: &Drive) -> &'static str {
         "drive-harddisk-solidstate-symbolic"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn drive(transport: Transport, rotational: bool, removable: bool) -> Drive {
+        Drive {
+            id: "/org/freedesktop/UDisks2/drives/Test".into(),
+            model: "Test".into(),
+            serial: None,
+            vendor: None,
+            size: 0,
+            transport,
+            rotational,
+            removable,
+            volumes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn removable_and_usb_drives_get_the_removable_icon() {
+        assert_eq!(
+            drive_icon(&drive(Transport::Sata, false, true)),
+            "drive-removable-media-symbolic"
+        );
+        assert_eq!(
+            drive_icon(&drive(Transport::Usb, false, false)),
+            "drive-removable-media-symbolic"
+        );
+    }
+
+    #[test]
+    fn rotational_drives_get_the_harddisk_icon() {
+        assert_eq!(
+            drive_icon(&drive(Transport::Sata, true, false)),
+            "drive-harddisk-symbolic"
+        );
+    }
+
+    #[test]
+    fn ssds_get_the_solidstate_icon() {
+        assert_eq!(
+            drive_icon(&drive(Transport::Nvme, false, false)),
+            "drive-harddisk-solidstate-symbolic"
+        );
+    }
+}

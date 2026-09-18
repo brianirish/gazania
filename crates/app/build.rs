@@ -25,6 +25,7 @@ fn main() {
         .expect("blueprint-compiler is required: pacman -S blueprint-compiler");
     assert!(status.success(), "blueprint-compiler failed");
 
+    println!("cargo:rerun-if-changed=src/ui");
     println!("cargo:rerun-if-changed=resources/zinnia.gresource.xml");
     println!("cargo:rerun-if-changed=src/style.css");
     glib_build_tools::compile_resources(
