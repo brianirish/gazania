@@ -122,6 +122,33 @@ impl Window {
             .activate(|win: &Self, _, _| win.dispatch(PageAction::CycleView))
             .build();
         self.add_action_entries([back, shortcuts, refresh, next, prev, activate, view, cycle]);
+
+        // Unmodified keys go on a bubble-phase controller so the focus widget
+        // (entries, dialogs, list boxes) sees them first. Escape is left alone:
+        // AdwNavigationView pops and AdwDialog closes on it natively.
+        let keys = gtk::ShortcutController::new();
+        keys.set_scope(gtk::ShortcutScope::Local);
+        keys.set_propagation_phase(gtk::PropagationPhase::Bubble);
+        for (trigger, action, target) in [
+            ("h", "win.back", None),
+            ("j", "win.next", None),
+            ("k", "win.prev", None),
+            ("l", "win.activate", None),
+            ("1", "win.view", Some(1i32)),
+            ("2", "win.view", Some(2i32)),
+            ("3", "win.view", Some(3i32)),
+            ("4", "win.view", Some(4i32)),
+        ] {
+            let shortcut = gtk::Shortcut::new(
+                gtk::ShortcutTrigger::parse_string(trigger),
+                Some(gtk::NamedAction::new(action)),
+            );
+            if let Some(n) = target {
+                shortcut.set_arguments(Some(&n.to_variant()));
+            }
+            keys.add_shortcut(shortcut);
+        }
+        self.add_controller(keys);
     }
 
     /// Route a page-level action to whichever page is visible.
