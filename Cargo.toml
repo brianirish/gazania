@@ -7,6 +7,10 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/brianirish/zinnia"
+description = "Disk hub for Arch Linux: drives, volumes and usage in a GTK4 app with a CLI twin"
+readme = "README.md"
+keywords = ["disk", "storage", "gtk4", "libadwaita", "udisks2"]
+categories = ["filesystem", "gui", "command-line-utilities"]
 
 [workspace.dependencies]
 zinnia-core = { path = "crates/core" }

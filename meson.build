@@ -5,7 +5,7 @@ project('zinnia',
 )
 
 gnome = import('gnome')
-cargo = find_program('cargo', required: true)
+find_program('cargo', required: true)
 find_program('blueprint-compiler', required: true)
 
 app_id = 'io.github.brianirish.Zinnia'

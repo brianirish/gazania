@@ -1,31 +1,51 @@
-# zinnia
+# Zinnia
+
+[![CI](https://github.com/brianirish/zinnia/actions/workflows/ci.yml/badge.svg)](https://github.com/brianirish/zinnia/actions/workflows/ci.yml)
 
 A disk hub for Arch Linux: the speed, scriptability and keyboard flow of
 terminal tools with the polish of a native GTK4 and libadwaita app.
 
-- `zinnia-app` shows every drive and volume with a live usage ring, and a
-  per-volume page with full details. Usage scanning with a sunburst, drive
-  health and benchmarks are on the roadmap.
-- `zinnia` is the CLI twin. `zinnia volumes` prints a table; `--json` prints
-  the same data as JSON for scripts.
-- On Omarchy, the app takes its accent from the active theme and follows
-  theme changes live.
+## What it does today
+
+- **Volumes overview.** Every drive as a group, every volume as a row with a
+  live usage ring, filesystem, mount points and an encryption badge. Btrfs
+  subvolumes collapse into one volume; LUKS cleartext devices are attributed
+  to their physical drive.
+- **Drive page.** Full details for a volume: model, serial, transport,
+  filesystem, UUID, encryption, size, used, available, and every mount point
+  with its options.
+- **`zinnia` CLI.** `zinnia volumes` prints a table; `zinnia volumes --json`
+  prints the same data for scripts.
+- **Omarchy aware.** On Omarchy the accent follows the active theme and
+  updates live when you switch themes.
+
+Usage scanning with a sunburst, drive health (SMART and NVMe) and benchmarks
+are next; each lives in its own design doc under `docs/superpowers/specs/`.
+
+## Install
+
+From source (requires `rust`, `meson`, `ninja`, `blueprint-compiler`,
+`gtk4`, `libadwaita`, `udisks2`):
+
+    meson setup build && meson compile -C build
+    sudo meson install -C build
+
+A PKGBUILD lives in `packaging/` for building an Arch package; an AUR
+package follows the first release.
 
 ## Keyboard
 
 `j` `k` move, `l` or `Enter` opens, `h` or `Escape` goes back, `1` to `4`
-switch views on a drive page, `Ctrl+R` refreshes, `?` lists every shortcut.
+switch views on a drive page, `Ctrl+Tab` cycles them, `Ctrl+R` refreshes,
+`?` lists every shortcut, `Ctrl+Q` quits.
 
-## Build from source
-
-Requires `rust`, `meson`, `ninja`, `blueprint-compiler`, `gtk4`,
-`libadwaita` and `udisks2`.
+## Develop
 
     cargo test --workspace
-    ./scripts/dev-run.sh                       # run the app from the tree
-    meson setup build && meson compile -C build
-    meson install -C build                     # or use packaging/PKGBUILD
+    ./scripts/dev-run.sh          # run the app from the tree
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout and the PR checklist.
 
 ## License
 
-MIT, see `LICENSE`.
+MIT, see [LICENSE](LICENSE).

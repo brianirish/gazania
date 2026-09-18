@@ -1,0 +1,36 @@
+name: Bug report
+description: Something is missing, wrong, or misbehaving
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! Security problems should go through
+        [private vulnerability reporting](../../security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `zinnia --version`, `pacman -Q gtk4 libadwaita udisks2` and `uname -r`.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: volumes
+    attributes:
+      label: What the engine sees
+      description: Output of `zinnia volumes --json`. Please redact drive serial numbers before posting.
+      render: json
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Run `zinnia-app` from a terminal and paste anything it prints, or the CLI's stderr.
+      render: text

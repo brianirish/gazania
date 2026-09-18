@@ -5,6 +5,6 @@ Exec=zinnia-app %u
 Icon=io.github.brianirish.Zinnia
 Terminal=false
 Type=Application
-Categories=System;Utility;GTK;
+Categories=System;GTK;
 Keywords=disk;drive;volume;usage;storage;
 StartupNotify=true
