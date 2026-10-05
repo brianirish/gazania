@@ -115,6 +115,7 @@ mod tests {
             transport: Transport::Nvme,
             rotational: false,
             removable: false,
+            device: None,
             volumes: vec![
                 volume(
                     "/dev/mapper/root",

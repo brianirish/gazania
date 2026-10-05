@@ -52,12 +52,17 @@ pub fn assemble(
                         transport: Transport::Unknown,
                         rotational: false,
                         removable: false,
+                        device: None,
                         volumes: Vec::new(),
                     });
                     drives.len() - 1
                 }),
         };
         drives[idx].volumes.push(volume);
+    }
+
+    for drive in &mut drives {
+        drive.device = whole_disk_device(&drive.id, &snapshot.blocks);
     }
 
     for drive in &mut drives {
@@ -97,6 +102,17 @@ fn resolve_drive_path(block: &RawBlock, by_path: &HashMap<&str, &RawBlock>) -> O
     None
 }
 
+/// The drive's whole-disk block: one that belongs to the drive and is not a
+/// partition. When several qualify, the one carrying a partition table wins.
+fn whole_disk_device(drive_id: &str, blocks: &[RawBlock]) -> Option<PathBuf> {
+    let mut candidates: Vec<&RawBlock> = blocks
+        .iter()
+        .filter(|b| b.drive.as_deref() == Some(drive_id) && !b.is_partition)
+        .collect();
+    candidates.sort_by_key(|b| !b.is_partition_table);
+    candidates.first().map(|b| PathBuf::from(&b.device))
+}
+
 fn drive_from_raw(raw: &RawDrive) -> Drive {
     let transport = if raw.is_nvme {
         Transport::Nvme
@@ -122,6 +138,7 @@ fn drive_from_raw(raw: &RawDrive) -> Drive {
         transport,
         rotational: raw.rotation_rate > 0,
         removable: raw.removable || raw.media_removable,
+        device: None,
         volumes: Vec::new(),
     }
 }
@@ -188,6 +205,52 @@ mod tests {
     use crate::volumes::mountinfo;
     use crate::volumes::raw::{RawBlock, RawDrive, Snapshot};
     use crate::volumes::usage::FsStats;
+
+    #[test]
+    fn each_drive_knows_its_whole_disk_device() {
+        let drives = assembled();
+        assert_eq!(drives[0].device, Some(PathBuf::from("/dev/sda")));
+        assert_eq!(drives[1].device, Some(PathBuf::from("/dev/nvme0n1")));
+    }
+
+    #[test]
+    fn a_partition_table_block_wins_a_device_tie() {
+        let mut snap = reference_snapshot();
+        snap.blocks.insert(
+            0,
+            RawBlock {
+                path: format!("{BLK}nvme0n1x"),
+                device: "/dev/nvme0n1x".into(),
+                preferred_device: "/dev/nvme0n1x".into(),
+                drive: Some(SAMSUNG.into()),
+                ..Default::default()
+            },
+        );
+        for b in &mut snap.blocks {
+            if b.device == "/dev/nvme0n1" {
+                b.is_partition_table = true;
+            }
+        }
+        let drives = assemble(&snap, &reference_mounts(), &mut fake_stats);
+        assert_eq!(drives[1].device, Some(PathBuf::from("/dev/nvme0n1")));
+    }
+
+    #[test]
+    fn the_synthetic_unknown_drive_has_no_device() {
+        let mut snap = reference_snapshot();
+        snap.blocks.push(RawBlock {
+            path: format!("{BLK}sdz1"),
+            device: "/dev/sdz1".into(),
+            preferred_device: "/dev/sdz1".into(),
+            id_type: "ext4".into(),
+            has_filesystem: true,
+            is_partition: true,
+            ..Default::default()
+        });
+        let drives = assemble(&snap, &reference_mounts(), &mut fake_stats);
+        let unknown = drives.iter().find(|d| d.id == UNKNOWN_DRIVE_ID).unwrap();
+        assert_eq!(unknown.device, None);
+    }
 
     const SAMSUNG: &str =
         "/org/freedesktop/UDisks2/drives/Samsung_SSD_960_PRO_512GB_NVMESERIAL0001";

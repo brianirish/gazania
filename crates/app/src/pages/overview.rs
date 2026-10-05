@@ -316,6 +316,7 @@ mod tests {
             transport,
             rotational,
             removable,
+            device: None,
             volumes: Vec::new(),
         }
     }

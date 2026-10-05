@@ -14,6 +14,7 @@ pub const IF_ATA: &str = "org.freedesktop.UDisks2.Drive.Ata";
 pub const IF_NVME: &str = "org.freedesktop.UDisks2.NVMe.Controller";
 pub const IF_BLOCK: &str = "org.freedesktop.UDisks2.Block";
 pub const IF_FS: &str = "org.freedesktop.UDisks2.Filesystem";
+pub const IF_PTABLE: &str = "org.freedesktop.UDisks2.PartitionTable";
 pub const IF_PART: &str = "org.freedesktop.UDisks2.Partition";
 pub const IF_ENC: &str = "org.freedesktop.UDisks2.Encrypted";
 pub const IF_SWAP: &str = "org.freedesktop.UDisks2.Swapspace";
@@ -93,6 +94,7 @@ pub fn flatten(objects: Objects) -> Snapshot {
                 has_filesystem: fs.is_some(),
                 mount_points: get_bytes_list(fs.unwrap_or(&empty), "MountPoints"),
                 is_partition: ifaces.contains_key(IF_PART),
+                is_partition_table: ifaces.contains_key(IF_PTABLE),
                 is_encrypted: ifaces.contains_key(IF_ENC),
                 is_swap: ifaces.contains_key(IF_SWAP),
             });
@@ -311,6 +313,43 @@ mod tests {
         );
         assert!(!root.is_partition);
         assert!(!root.is_encrypted);
+    }
+
+    #[test]
+    fn flatten_marks_partition_table_blocks() {
+        let mut objects = reference_objects();
+        let mut disk: HashMap<String, Props> = HashMap::new();
+        disk.insert(
+            IF_BLOCK.into(),
+            HashMap::from([
+                ("Device".to_string(), ay("/dev/nvme0n1")),
+                ("PreferredDevice".to_string(), ay("/dev/nvme0n1")),
+                (
+                    "Drive".to_string(),
+                    o("/org/freedesktop/UDisks2/drives/Samsung"),
+                ),
+                ("Size".to_string(), u(1)),
+            ]),
+        );
+        disk.insert(IF_PTABLE.into(), HashMap::new());
+        objects.insert(
+            "/org/freedesktop/UDisks2/block_devices/nvme0n1".into(),
+            disk,
+        );
+
+        let snap = flatten(objects);
+        let whole = snap
+            .blocks
+            .iter()
+            .find(|b| b.path.ends_with("/nvme0n1"))
+            .unwrap();
+        assert!(whole.is_partition_table);
+        let root = snap
+            .blocks
+            .iter()
+            .find(|b| b.path.ends_with("dm_2d0"))
+            .unwrap();
+        assert!(!root.is_partition_table);
     }
 
     #[test]

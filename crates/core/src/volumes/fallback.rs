@@ -36,6 +36,7 @@ pub fn assemble_fallback(
             transport: Transport::Unknown,
             rotational: false,
             removable: false,
+            device: None,
             volumes: vec![Volume {
                 id: m.source.clone(),
                 device: PathBuf::from(&m.source),

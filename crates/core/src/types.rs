@@ -15,6 +15,10 @@ pub struct Drive {
     pub transport: Transport,
     pub rotational: bool,
     pub removable: bool,
+    /// Whole-disk kernel device, e.g. `/dev/nvme0n1`. `None` in fallback mode
+    /// and when udisks2 reports no whole-disk block for the drive.
+    #[serde(default)]
+    pub device: Option<PathBuf>,
     pub volumes: Vec<Volume>,
 }
 
@@ -84,6 +88,7 @@ mod tests {
             transport: Transport::Nvme,
             rotational: false,
             removable: false,
+            device: Some(PathBuf::from("/dev/nvme0n1")),
             volumes: vec![Volume {
                 id: "/org/freedesktop/UDisks2/block_devices/dm_2d0".into(),
                 device: PathBuf::from("/dev/mapper/root"),
@@ -110,6 +115,14 @@ mod tests {
         let json = serde_json::to_string(&sample()).unwrap();
         let back: Drive = serde_json::from_str(&json).unwrap();
         assert_eq!(back, sample());
+    }
+
+    #[test]
+    fn drive_json_without_device_still_parses() {
+        let mut value = serde_json::to_value(sample()).unwrap();
+        value.as_object_mut().unwrap().remove("device");
+        let back: Drive = serde_json::from_value(value).unwrap();
+        assert_eq!(back.device, None);
     }
 
     #[test]

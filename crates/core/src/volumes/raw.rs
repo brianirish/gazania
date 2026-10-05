@@ -40,6 +40,8 @@ pub struct RawBlock {
     pub mount_points: Vec<String>,
     /// Object has `org.freedesktop.UDisks2.Partition`.
     pub is_partition: bool,
+    /// Object has `org.freedesktop.UDisks2.PartitionTable`.
+    pub is_partition_table: bool,
     /// Object has `org.freedesktop.UDisks2.Encrypted`.
     pub is_encrypted: bool,
     /// Object has `org.freedesktop.UDisks2.Swapspace`.
