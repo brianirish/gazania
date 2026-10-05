@@ -16,12 +16,18 @@ pub enum Change {
 }
 
 pub async fn watch(conn: &zbus::Connection) -> Result<impl Stream<Item = Change>> {
+    watch_owned(conn.clone()).await
+}
+
+/// Like `watch`, but takes its own connection handle, so the returned stream
+/// borrows nothing and can outlive the caller's reference.
+pub async fn watch_owned(conn: zbus::Connection) -> Result<impl Stream<Item = Change> + 'static> {
     let rule = MatchRule::builder()
         .msg_type(zbus::message::Type::Signal)
         .path_namespace(ROOT)
         .map_err(|e| Error::Dbus(e.to_string()))?
         .build();
-    let stream = MessageStream::for_match_rule(rule, conn, None)
+    let stream = MessageStream::for_match_rule(rule, &conn, None)
         .await
         .map_err(|e| Error::Dbus(e.to_string()))?;
 

@@ -30,15 +30,8 @@ pub struct VolumesReport {
 
 /// Enumerate drives and volumes. Uses udisks2 when reachable, else mountinfo.
 pub async fn list_volumes() -> Result<VolumesReport> {
-    let mounts = mountinfo::read_system()?;
-    let mut stats = |p: &Path| usage::stats_for(p).ok();
-
-    let via_udisks: Result<Vec<Drive>> = async {
-        let conn = udisks::connect().await?;
-        let snap = udisks::snapshot(&conn).await?;
-        Ok(assemble::assemble(&snap, &mounts, &mut stats))
-    }
-    .await;
+    let via_udisks: Result<Vec<Drive>> =
+        async { crate::client::Client::connect().await?.drives().await }.await;
 
     match via_udisks {
         Ok(drives) => Ok(VolumesReport {
@@ -46,11 +39,15 @@ pub async fn list_volumes() -> Result<VolumesReport> {
             fallback_reason: None,
             drives,
         }),
-        Err(e @ (Error::DbusUnavailable(_) | Error::Dbus(_))) => Ok(VolumesReport {
-            source: Source::MountinfoFallback,
-            fallback_reason: Some(e.to_string()),
-            drives: fallback::assemble_fallback(&mounts, &mut stats),
-        }),
+        Err(e @ (Error::DbusUnavailable(_) | Error::Dbus(_))) => {
+            let mounts = mountinfo::read_system()?;
+            let mut stats = |p: &Path| usage::stats_for(p).ok();
+            Ok(VolumesReport {
+                source: Source::MountinfoFallback,
+                fallback_reason: Some(e.to_string()),
+                drives: fallback::assemble_fallback(&mounts, &mut stats),
+            })
+        }
         Err(e) => Err(e),
     }
 }

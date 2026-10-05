@@ -2,6 +2,7 @@
 //! No GTK or GLib dependency lives here.
 
 pub mod bench;
+pub mod client;
 pub mod error;
 pub mod format;
 pub mod health;
