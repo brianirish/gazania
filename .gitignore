@@ -6,3 +6,5 @@
 /packaging/*.pkg.tar.*
 /packaging/*.tar.gz
 /packaging/.SRCINFO
+/.claude/
+/.superpowers/
