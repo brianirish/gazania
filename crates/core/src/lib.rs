@@ -5,6 +5,7 @@ pub mod bench;
 pub mod error;
 pub mod format;
 pub mod health;
+pub mod io;
 pub mod scan;
 pub mod types;
 pub mod volumes;
