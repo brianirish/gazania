@@ -1,9 +1,9 @@
 # Gazania 0.2: Omarchy bar plugin and engine groundwork
 
 Date: 2026-09-18
-Status: all four sections approved in conversation (1 and 2 on 2026-09-18,
-3 and 4 on 2026-10-05); this written spec awaits the user's review. No
-implementation plan exists yet.
+Status: approved (sections in conversation 2026-09-18 and 2026-10-05; the
+written spec on 2026-10-05). Implementation plan:
+`docs/superpowers/plans/2026-10-05-gazania-bar-plugin.md`.
 
 ## Purpose
 
