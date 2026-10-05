@@ -6,6 +6,8 @@ pub enum Error {
     DbusUnavailable(String),
     #[error("D-Bus call failed: {0}")]
     Dbus(String),
+    #[error("{0}")]
+    InvalidArgument(String),
     #[error("statvfs failed for {path}: {source}")]
     Statvfs {
         path: PathBuf,

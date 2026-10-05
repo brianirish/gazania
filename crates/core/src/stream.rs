@@ -5,7 +5,7 @@
 //! its consumer does.
 
 use crate::client::{backoff_delay, ChangeStream, Client};
-use crate::error::Error;
+use crate::error::{Error, Result};
 use crate::health::Health;
 use crate::io::{IoRate, IoSampler};
 use crate::types::Drive;
@@ -57,7 +57,7 @@ impl Kinds {
     };
 
     /// A comma-separated subset of `volumes,io,health`.
-    pub fn parse(list: &str) -> Result<Kinds, String> {
+    pub fn parse(list: &str) -> Result<Kinds> {
         let mut kinds = Kinds {
             volumes: false,
             io: false,
@@ -69,14 +69,16 @@ impl Kinds {
                 "io" => kinds.io = true,
                 "health" => kinds.health = true,
                 other => {
-                    return Err(format!(
+                    return Err(Error::InvalidArgument(format!(
                         "unknown kind '{other}', expected volumes, io or health"
-                    ))
+                    )))
                 }
             }
         }
         if !(kinds.volumes || kinds.io || kinds.health) {
-            return Err("expected at least one of volumes, io, health".into());
+            return Err(Error::InvalidArgument(
+                "expected at least one of volumes, io, health".into(),
+            ));
         }
         Ok(kinds)
     }
@@ -205,6 +207,57 @@ async fn wait(deadline: Option<Instant>, changes: Option<&mut ChangeStream>) -> 
     }
 }
 
+/// Reconnect bookkeeping: when to try next and how far the backoff has grown.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Reconnect {
+    attempt: u32,
+    at: Option<Instant>,
+    was_down: bool,
+}
+
+impl Reconnect {
+    fn starting(now: Instant) -> Self {
+        Self {
+            attempt: 0,
+            at: Some(now),
+            was_down: false,
+        }
+    }
+
+    fn due(&self, now: Instant) -> bool {
+        self.at.is_some_and(|t| t <= now)
+    }
+
+    /// A failed connect or a lost connection: try again after the next
+    /// backoff step.
+    fn failed(&mut self, now: Instant) {
+        self.was_down = true;
+        self.at = Some(now + backoff_delay(self.attempt));
+        self.attempt = self.attempt.saturating_add(1);
+    }
+
+    /// udisks2 answered. Returns whether the stream had been down, so the
+    /// caller re-sends volumes and health.
+    fn succeeded(&mut self) -> bool {
+        self.attempt = 0;
+        self.at = None;
+        std::mem::take(&mut self.was_down)
+    }
+}
+
+/// A connection counts only once udisks2 has answered: subscribe to changes
+/// first, so none slip past the snapshot, then fetch the drive list.
+async fn connect_udisks(kinds: Kinds) -> Result<(Client, Option<ChangeStream>, Vec<Drive>)> {
+    let client = Client::connect().await?;
+    let changes = if kinds.volumes {
+        Some(client.changes().await?)
+    } else {
+        None
+    };
+    let drives = client.drives().await?;
+    Ok((client, changes, drives))
+}
+
 /// Runs the stream until `emit` fails, which means the consumer went away.
 pub async fn run(
     kinds: Kinds,
@@ -212,6 +265,9 @@ pub async fn run(
     emit: &mut dyn FnMut(&Event) -> std::io::Result<()>,
 ) {
     if emit(&Event::hello()).is_err() {
+        return;
+    }
+    if !(kinds.volumes || kinds.io || kinds.health) {
         return;
     }
     let mut schedule = Schedule::new(Instant::now(), kinds, intervals);
@@ -223,33 +279,21 @@ pub async fn run(
     let mut drives: Vec<Drive> = Vec::new();
     let mut client: Option<Client> = None;
     let mut changes: Option<ChangeStream> = None;
-    let mut attempt: u32 = 0;
-    let mut reconnect_at: Option<Instant> = Some(Instant::now());
-    let mut was_down = false;
+    let mut reconnect = Reconnect::starting(Instant::now());
 
     loop {
-        if client.is_none() && reconnect_at.is_some_and(|t| t <= Instant::now()) {
-            match Client::connect().await {
-                Ok(c) => {
-                    if kinds.volumes {
-                        changes = c.changes().await.ok();
-                    }
-                    // Throughput needs each drive's device even without volumes.
-                    if let Ok(d) = c.drives().await {
-                        drives = d;
-                    }
+        if client.is_none() && reconnect.due(Instant::now()) {
+            match connect_udisks(kinds).await {
+                Ok((c, ch, d)) => {
                     client = Some(c);
-                    attempt = 0;
-                    reconnect_at = None;
-                    if was_down {
+                    changes = ch;
+                    drives = d;
+                    if reconnect.succeeded() {
                         schedule.refresh_now(Instant::now());
-                        was_down = false;
                     }
                 }
                 Err(e) => {
-                    was_down = true;
-                    reconnect_at = Some(Instant::now() + backoff_delay(attempt));
-                    attempt = attempt.saturating_add(1);
+                    reconnect.failed(Instant::now());
                     if emit(&Event::error(format!(
                         "udisks2 unavailable ({e}), retrying"
                     )))
@@ -283,9 +327,7 @@ pub async fn run(
                         Err(e @ (Error::Dbus(_) | Error::DbusUnavailable(_))) => {
                             client = None;
                             changes = None;
-                            was_down = true;
-                            reconnect_at = Some(Instant::now() + backoff_delay(attempt));
-                            attempt = attempt.saturating_add(1);
+                            reconnect.failed(Instant::now());
                             Event::error(format!("udisks2 connection lost ({e}), reconnecting"))
                         }
                         Err(e) => Event::error(e.to_string()),
@@ -297,7 +339,7 @@ pub async fn run(
             }
         }
 
-        let deadline = [schedule.next_deadline(), reconnect_at]
+        let deadline = [schedule.next_deadline(), reconnect.at]
             .into_iter()
             .flatten()
             .min();
@@ -307,8 +349,7 @@ pub async fn run(
             Wake::StreamEnded => {
                 client = None;
                 changes = None;
-                was_down = true;
-                reconnect_at = Some(Instant::now());
+                reconnect.failed(Instant::now());
                 if emit(&Event::error("udisks2 signal stream ended, reconnecting")).is_err() {
                     return;
                 }
@@ -389,18 +430,46 @@ mod tests {
 
     #[test]
     fn kinds_parse_subsets_and_reject_unknown_or_empty() {
-        assert_eq!(Kinds::parse("volumes,io,health"), Ok(Kinds::ALL));
+        assert_eq!(Kinds::parse("volumes,io,health").unwrap(), Kinds::ALL);
         assert_eq!(
-            Kinds::parse(" io "),
-            Ok(Kinds {
+            Kinds::parse(" io ").unwrap(),
+            Kinds {
                 volumes: false,
                 io: true,
                 health: false
-            })
+            }
         );
-        assert!(Kinds::parse("io,disk").unwrap_err().contains("disk"));
+        assert!(Kinds::parse("io,disk")
+            .unwrap_err()
+            .to_string()
+            .contains("disk"));
         assert!(Kinds::parse("").is_err());
         assert!(Kinds::parse(",").is_err());
+    }
+
+    #[test]
+    fn reconnect_backs_off_until_udisks2_answers() {
+        let start = Instant::now();
+        let mut r = Reconnect::starting(start);
+        assert!(r.due(start));
+        r.failed(start);
+        assert_eq!(r.at, Some(start + SEC));
+        r.failed(start + SEC);
+        assert_eq!(r.at, Some(start + 3 * SEC));
+        r.failed(start + 3 * SEC);
+        assert_eq!(r.at, Some(start + 7 * SEC));
+        assert!(!r.due(start + 6 * SEC));
+        assert!(r.succeeded());
+        assert_eq!(r.at, None);
+        assert!(!r.succeeded());
+        r.failed(start + 10 * SEC);
+        assert_eq!(r.at, Some(start + 11 * SEC));
+    }
+
+    #[test]
+    fn a_first_successful_connect_asks_for_no_refresh() {
+        let mut r = Reconnect::starting(Instant::now());
+        assert!(!r.succeeded());
     }
 
     #[test]
