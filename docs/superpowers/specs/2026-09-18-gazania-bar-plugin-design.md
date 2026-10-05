@@ -1,8 +1,9 @@
 # Gazania 0.2: Omarchy bar plugin and engine groundwork
 
 Date: 2026-09-18
-Status: DRAFT. Sections 1 and 2 were reviewed and approved live; sections 3
-and 4 still need the user's review. No implementation plan exists yet.
+Status: all four sections approved in conversation (1 and 2 on 2026-09-18,
+3 and 4 on 2026-10-05); this written spec awaits the user's review. No
+implementation plan exists yet.
 
 ## Purpose
 
@@ -33,27 +34,30 @@ Decisions already made:
 ### Core changes (`gazania-core`)
 
 `Drive` gains `pub device: Option<PathBuf>`: the whole-disk block for the
-drive (`/dev/nvme0n1`, `/dev/sda`), resolved in `assemble` from the block
-whose `Drive` matches the drive and that has no `Partition` interface and no
-`CryptoBackingDevice`. `RawBlock` gains `is_partition_table: bool`
-(`org.freedesktop.UDisks2.PartitionTable` present) to make that choice exact.
+drive (`/dev/nvme0n1`, `/dev/sda`), resolved in `assemble` as the block whose
+`Drive` is this drive and which is not a partition; when several qualify,
+the one with a partition table wins. `RawBlock` gains
+`is_partition_table: bool` (`org.freedesktop.UDisks2.PartitionTable`
+present) for that tie-break.
 The field is new and optional, so `volumes --json` stays backward compatible.
 
 New module `io`:
 
 - `pub struct DiskCounters { pub device: String, pub sectors_read: u64, pub sectors_written: u64 }`
 - `pub fn parse_diskstats(text: &str) -> Vec<DiskCounters>`: one entry per
-  line of `/proc/diskstats`, fields 3 (reads completed is 1, sectors read
-  is 3) and 7 (sectors written) of the post-name columns, 512-byte sectors.
-  Malformed lines are skipped, never panics.
+  line of `/proc/diskstats`. Each line is `major minor name` followed by the
+  counters; sectors read is the 3rd counter after the name and sectors
+  written the 7th. Sectors are 512 bytes regardless of the device's block
+  size. Malformed lines are skipped; the parser never panics.
 - `pub fn read_diskstats() -> Result<Vec<DiskCounters>>` reads the file.
 - `pub struct IoSampler { previous: Option<(Instant, Vec<DiskCounters>)> }`
-  with `pub fn sample(&mut self) -> Result<Vec<IoRate>>`;
-  `pub struct IoRate { pub device: PathBuf, pub read_bps: u64, pub write_bps: u64 }`
-  computed from the delta over elapsed seconds; the first call returns an
-  empty list. Only devices that are some `Drive.device` are reported when the
-  caller passes the drive list (`sample_for(&[Drive])`), which is what the
-  watch and the one-shot command use.
+  with one method, `pub fn sample(&mut self, drives: &[Drive]) -> Result<Vec<IoRate>>`,
+  returning `pub struct IoRate { pub device: PathBuf, pub read_bps: u64, pub write_bps: u64 }`
+  for each drive whose `device` basename appears in diskstats. Rates are the
+  counter delta over elapsed seconds, saturating on counter resets; the
+  first call returns an empty list. A pure helper
+  `rates(prev, now, elapsed: Duration, drives) -> Vec<IoRate>` carries the
+  math so tests need no clock.
 
 New module `health` (first slice of 0.4):
 
@@ -140,7 +144,8 @@ package (0.2 or newer).
 ### Bar widget
 
 A Nerd Font disk glyph followed by the stat text: `65%` (free), `↓12M ↑3.1M`
-(bytes per second, `human_size` rounding, `0` shown as `0`), or `42°`. On
+(bytes per second in `human_size` rounding, so idle reads `↓0B ↑0B`), or
+`42°`. On
 vertical bars only the glyph shows. Text and glyph take the warning or error
 color when the tracked volume's used percent passes the thresholds; the
 temperature variant uses the drive's `failing` flag for the error color.
@@ -152,7 +157,7 @@ package").
 ### Panel
 
 A `KeyboardPanel` with `contentWidth` fitted to 380 px, anchored to the
-button, three parts in a `Column`:
+button, four parts in a `Column`:
 
 1. **Hero** (`PanelHero` style): disk glyph, title "Disks", subtitle
    `<free> free on <volume>` for the tracked volume.
@@ -164,7 +169,7 @@ button, three parts in a `Column`:
    targets.
 3. **Drives** (present when `showIo` or `showTemperature`): one block per
    drive: model on the left; temperature `42 °C` with a warning glyph when
-   `failing` on the right; below, `↓ 12 MB/s  ↑ 3 MB/s` and a 30-sample
+   `failing` on the right; below, `↓ 12M/s  ↑ 3.1M/s` and a 30-sample
    sparkline (two polylines, read and write, `Shape` with `PathPolyline`)
    when `showIo`.
 4. **Actions**: an "Open Gazania" `PanelActionButton` that runs
@@ -186,8 +191,9 @@ Pure functions with node tests:
 - `trackedVolume(state, settings)`, `trackedDrive(state, settings)`.
 - `usedPercent(volume)`, `level(percent, settings) -> "normal"|"warning"|"error"`.
 - `barText(state, settings, vertical)` and `tooltip(state, settings)`.
-- `formatSize(bytes)` and `formatRate(bps)` mirroring core's `human_size`
-  rules (1024-based, one decimal below ten units).
+- `formatSize(bytes)` mirroring core's `human_size` rules (1024-based, one
+  decimal below ten units, `B K M G T P` suffixes) and `formatRate(bps)`,
+  which is `formatSize` plus `/s`.
 - `sparkline(samples, width, height) -> points`.
 
 ## Section 3: process lifecycle and error handling
@@ -195,7 +201,7 @@ Pure functions with node tests:
 The widget owns one `Process`:
 
 ```
-command: ["setpriv", "--pdeathsig", "TERM", "gazania", "watch", "--io-interval", <ioInterval>]
+command: ["setpriv", "--pdeathsig", "TERM", "gazania", "watch"]
 stdout: SplitParser { onRead: root.consume(line) }
 onExited: restartTimer.restart()
 ```
@@ -203,7 +209,9 @@ onExited: restartTimer.restart()
 - It runs for the widget's whole life, not only while the panel is open,
   because the bar text needs data.
 - `hello` with `protocol != 1` sets a "please update gazania" state and
-  stops restarts.
+  stops restarts. So does an exit with code 2 before any `hello` line: that
+  is clap's usage error, which is what gazania 0.1 returns for the unknown
+  `watch` subcommand.
 - Exit with code 127 or a spawn failure means the binary is missing: the
   widget shows the install hint and retries every 60 s so an install is
   picked up without a shell restart.
@@ -247,7 +255,18 @@ re-emits `volumes` and `health` after reconnecting.
 - Live check on this machine: install into
   `~/.config/omarchy/plugins/brianirish.gazania`, enable, screenshot the bar
   and the open panel on DP-1 with `grim`, confirm the stat text, the rings,
-  the temperature and the sparkline update.
+  the temperature and the sparkline update. The panel takes keyboard focus
+  when it opens, so before opening it the check confirms with
+  `hyprctl clients -j` that no window is fullscreen on DP-3, and never
+  injects keystrokes.
+
+### Plan shape
+
+One implementation plan, in dependency order: the engine tasks in the
+gazania repo first (worktree, ending with an installable 0.2.0 package),
+then the plugin tasks in a new `~/Basement/omarchy-gazania` repo modelled on
+`~/Basement/omarchy-mouse-battery`. Creating the public GitHub repo for the
+plugin is a step that asks first.
 
 ### Versioning and release
 
