@@ -15,7 +15,9 @@ terminal tools with the polish of a native GTK4 and libadwaita app.
   filesystem, UUID, encryption, size, used, available, and every mount point
   with its options.
 - **`gazania` CLI.** `gazania volumes` prints a table; `gazania volumes --json`
-  prints the same data for scripts.
+  prints the same data for scripts. `gazania health` shows drive temperature
+  and SMART status, `gazania io` shows throughput, and `gazania watch` streams
+  all of it as JSON lines.
 - **Omarchy aware.** On Omarchy the accent follows the active theme and
   updates live when you switch themes.
 
@@ -40,6 +42,24 @@ package follows the first release.
 `j` `k` move, `l` or `Enter` opens, `h` or `Escape` goes back, `1` to `4`
 switch views on a drive page, `Ctrl+Tab` cycles them, `Ctrl+R` refreshes,
 `?` lists every shortcut, `Ctrl+Q` quits.
+
+## Scripting
+
+`gazania watch` prints one JSON object per line until its reader goes away:
+
+    {"event":"hello","protocol":1,"version":"0.2.0"}
+    {"event":"volumes","drives":[...]}
+    {"event":"health","drives":[{"drive_id":"...","device":"/dev/nvme0n1","temperature_c":41.9,...}]}
+    {"event":"io","drives":[{"device":"/dev/nvme0n1","read_bps":12582912,"write_bps":3250585}]}
+
+Volumes arrive at start, within 300 ms of a mount change and every 30 seconds;
+throughput every second; health every minute. `--only volumes,io,health` picks
+a subset, and `--io-interval`, `--health-interval` and `--usage-interval`
+change the cadence. An `error` event reports trouble such as a lost udisks2
+connection; the stream keeps going and reconnects.
+
+The Omarchy bar plugin, [omarchy-gazania](https://github.com/brianirish/omarchy-gazania),
+is built on this stream.
 
 ## Develop
 

@@ -1,32 +1,74 @@
-//! Text renderers for the volumes report.
+//! Text renderers for the CLI's table and JSON output.
 
 use gazania_core::format::human_size;
+use gazania_core::health::Health;
+use gazania_core::io::IoRate;
 use gazania_core::{Drive, Volume};
-
-const HEADER: [&str; 7] = ["DEVICE", "FS", "SIZE", "USED", "AVAIL", "USE%", "MOUNTS"];
 
 pub fn render_json(drives: &[Drive]) -> String {
     serde_json::to_string_pretty(drives).unwrap_or_else(|_| "[]".to_string())
 }
 
 pub fn render_table(drives: &[Drive]) -> String {
-    let mut rows: Vec<[String; 7]> = vec![HEADER.map(str::to_string)];
-    for v in drives.iter().flat_map(|d| d.volumes.iter()) {
-        rows.push(row(v));
-    }
+    let mut rows = vec![header(&[
+        "DEVICE", "FS", "SIZE", "USED", "AVAIL", "USE%", "MOUNTS",
+    ])];
+    rows.extend(drives.iter().flat_map(|d| d.volumes.iter()).map(volume_row));
+    align(&rows)
+}
 
-    let mut widths = [0usize; 7];
-    for r in &rows {
-        for (i, cell) in r.iter().enumerate() {
-            widths[i] = widths[i].max(cell.len());
+pub fn render_health_table(health: &[Health]) -> String {
+    let mut rows = vec![header(&["DRIVE", "DEVICE", "TEMP", "HOURS", "STATUS"])];
+    for h in health {
+        rows.push(vec![
+            h.model.clone(),
+            h.device
+                .as_ref()
+                .map(|d| d.display().to_string())
+                .unwrap_or_else(|| "-".into()),
+            h.temperature_c
+                .map(|t| format!("{t:.0}°C"))
+                .unwrap_or_else(|| "-".into()),
+            h.power_on_hours
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "-".into()),
+            status(h),
+        ]);
+    }
+    align(&rows)
+}
+
+pub fn render_io_table(rates: &[IoRate]) -> String {
+    let mut rows = vec![header(&["DEVICE", "READ/S", "WRITE/S"])];
+    for r in rates {
+        rows.push(vec![
+            r.device.display().to_string(),
+            human_size(r.read_bps),
+            human_size(r.write_bps),
+        ]);
+    }
+    align(&rows)
+}
+
+fn header(names: &[&str]) -> Vec<String> {
+    names.iter().map(|s| s.to_string()).collect()
+}
+
+/// Left-aligned columns two spaces apart, measured in characters; the last
+/// column is not padded and trailing space is trimmed.
+fn align(rows: &[Vec<String>]) -> String {
+    let columns = rows.iter().map(Vec::len).max().unwrap_or(0);
+    let mut widths = vec![0usize; columns];
+    for row in rows {
+        for (i, cell) in row.iter().enumerate() {
+            widths[i] = widths[i].max(cell.chars().count());
         }
     }
-
     let mut out = String::new();
-    for r in &rows {
+    for row in rows {
         let mut line = String::new();
-        for (i, cell) in r.iter().enumerate() {
-            if i == 6 {
+        for (i, cell) in row.iter().enumerate() {
+            if i + 1 == row.len() {
                 line.push_str(cell);
             } else {
                 line.push_str(&format!("{:<w$}  ", cell, w = widths[i]));
@@ -38,7 +80,17 @@ pub fn render_table(drives: &[Drive]) -> String {
     out
 }
 
-fn row(v: &Volume) -> [String; 7] {
+fn status(h: &Health) -> String {
+    if !h.warnings.is_empty() {
+        format!("warning: {}", h.warnings.join(", "))
+    } else if h.failing {
+        "failing".into()
+    } else {
+        "ok".into()
+    }
+}
+
+fn volume_row(v: &Volume) -> Vec<String> {
     let (used, avail, pct) = match v.usage {
         Some(u) => (
             human_size(u.used),
@@ -56,7 +108,7 @@ fn row(v: &Volume) -> [String; 7] {
             .collect::<Vec<_>>()
             .join(", ")
     };
-    [
+    vec![
         v.device.display().to_string(),
         v.fs_type.clone().unwrap_or_else(|| "-".into()),
         human_size(v.size),
@@ -69,7 +121,7 @@ fn row(v: &Volume) -> [String; 7] {
 
 /// Percent used the way `df` computes it: used over used plus available, rounded up.
 fn percent(used: u64, available: u64) -> u64 {
-    let total = used + available;
+    let total = used.saturating_add(available);
     if total == 0 {
         return 0;
     }
@@ -184,5 +236,99 @@ mod tests {
         let back: Vec<Drive> = serde_json::from_str(&out).unwrap();
         assert_eq!(back, drives());
         assert_eq!(render_json(&[]), "[]");
+    }
+
+    #[test]
+    fn health_table_shows_temperature_hours_and_status() {
+        let out = render_health_table(&[
+            Health {
+                drive_id: "/d/1".into(),
+                device: Some(PathBuf::from("/dev/nvme0n1")),
+                model: "Samsung SSD 960 PRO 512GB".into(),
+                temperature_c: Some(41.9),
+                power_on_hours: Some(30_438),
+                failing: false,
+                warnings: vec![],
+                updated: None,
+            },
+            Health {
+                drive_id: "/d/2".into(),
+                device: None,
+                model: "USB".into(),
+                temperature_c: None,
+                power_on_hours: None,
+                failing: true,
+                warnings: vec![],
+                updated: None,
+            },
+            Health {
+                drive_id: "/d/3".into(),
+                device: Some(PathBuf::from("/dev/sda")),
+                model: "SATA".into(),
+                temperature_c: Some(70.0),
+                power_on_hours: Some(5),
+                failing: true,
+                warnings: vec!["temperature".into()],
+                updated: None,
+            },
+        ]);
+        let lines: Vec<&str> = out.lines().collect();
+        assert_eq!(
+            lines[0].split_whitespace().collect::<Vec<_>>(),
+            ["DRIVE", "DEVICE", "TEMP", "HOURS", "STATUS"]
+        );
+        assert!(lines[1].starts_with("Samsung SSD 960 PRO 512GB  /dev/nvme0n1"));
+        assert!(lines[1].contains("42°C"));
+        assert!(lines[1].ends_with("ok"));
+        assert!(lines[2].contains(" - "));
+        assert!(lines[2].ends_with("failing"));
+        assert!(lines[3].ends_with("warning: temperature"));
+    }
+
+    #[test]
+    fn health_table_columns_line_up_despite_the_degree_sign() {
+        let out = render_health_table(&[
+            Health {
+                drive_id: "/d/1".into(),
+                device: Some(PathBuf::from("/dev/sda")),
+                model: "A".into(),
+                temperature_c: Some(40.0),
+                power_on_hours: Some(1),
+                failing: false,
+                warnings: vec![],
+                updated: None,
+            },
+            Health {
+                drive_id: "/d/2".into(),
+                device: Some(PathBuf::from("/dev/sdb")),
+                model: "B".into(),
+                temperature_c: None,
+                power_on_hours: Some(2),
+                failing: false,
+                warnings: vec![],
+                updated: None,
+            },
+        ]);
+        let lines: Vec<&str> = out.lines().collect();
+        let col = |line: &str| line.chars().position(|c| c == '1' || c == '2').unwrap();
+        assert_eq!(col(lines[1]), col(lines[2]));
+    }
+
+    #[test]
+    fn io_table_lists_rates_in_human_units() {
+        let out = render_io_table(&[IoRate {
+            device: PathBuf::from("/dev/nvme0n1"),
+            read_bps: 12_582_912,
+            write_bps: 3_250_585,
+        }]);
+        let lines: Vec<&str> = out.lines().collect();
+        assert_eq!(
+            lines[0].split_whitespace().collect::<Vec<_>>(),
+            ["DEVICE", "READ/S", "WRITE/S"]
+        );
+        assert_eq!(
+            lines[1].split_whitespace().collect::<Vec<_>>(),
+            ["/dev/nvme0n1", "12M", "3.1M"]
+        );
     }
 }

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `gazania watch`: volumes, per-drive throughput and drive health as JSON
+  lines, reconnecting to udisks2 with backoff.
+- `gazania health` and `gazania io`, each with `--json`.
+- Drives in `gazania volumes --json` carry their whole-disk `device`.
+
+### Changed
+
+- One system-bus connection is reused for every udisks2 query in the stream.
+
 ## [0.1.0] - 2026-09-18
 
 ### Added
