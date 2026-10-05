@@ -54,6 +54,33 @@ The spec's behavior is unchanged; these are naming and structure choices made wh
 - The spec's "accent/warning/error" ring colors use a warning tone blended from the theme's accent and urgent colors, because Omarchy's palette has no warning color.
 - The roadmap's "`j` and `k` on the Details view" item is not in the 0.2 spec, so it is not in this plan.
 
+## Execution Amendments
+
+Changes made while executing this plan, after review. The shipped code
+follows these where they differ from the task text below.
+
+- **Commit trailers (all tasks):** each commit's `Co-Authored-By:` line names
+  the model that wrote it, not always Opus 5.5.
+- **Task 5, reconnect:** a connection counts only after udisks2 answers. A
+  private `connect_udisks(kinds)` subscribes to changes and then fetches the
+  drive list, and either failure takes the backoff path with an `error`
+  event. The bookkeeping lives in a pure `Reconnect` struct (`starting`,
+  `due`, `failed`, `succeeded`) with two tests, and `StreamEnded` backs off
+  too. The plan's code reset the backoff whenever the system bus answered, so
+  a stopped udisks2 was retried every second, and `--only io` streamed empty
+  data without an error.
+- **Task 5, errors:** `Kinds::parse` returns `gazania_core::Result<Kinds>`
+  through a new `Error::InvalidArgument(String)`, per the global constraint
+  on fallible core functions.
+- **Task 5, no kinds:** `run()` returns right after hello when no kinds are
+  requested.
+- **Task 6, intervals:** `--io-interval`, `--health-interval` and
+  `--usage-interval` accept 1 to 86400 seconds; an unbounded value overflows
+  `Instant + Duration`.
+- **Task 6, development package:** `pkexec pacman -U` needs the package's
+  absolute path. `timeout 4 gazania watch | cut ...` prints nothing because
+  `timeout` ends the whole pipeline; redirect to a file to inspect it.
+
 ## File Structure
 
 ```
