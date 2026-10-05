@@ -21,8 +21,8 @@ terminal tools with the polish of a native GTK4 and libadwaita app.
 - **Omarchy aware.** On Omarchy the accent follows the active theme and
   updates live when you switch themes.
 
-Usage scanning with a sunburst, drive health (SMART and NVMe), benchmarks
-and an Omarchy bar plugin are next. See [ROADMAP.md](ROADMAP.md) for the
+Usage scanning with a sunburst, the full SMART attribute table with
+self-tests, and benchmarks are next. See [ROADMAP.md](ROADMAP.md) for the
 milestones; each larger feature starts with a design doc under
 `docs/superpowers/specs/`.
 

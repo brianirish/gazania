@@ -11,6 +11,7 @@ use crate::io::{IoRate, IoSampler};
 use crate::types::Drive;
 use futures_lite::StreamExt;
 use serde::{Deserialize, Serialize};
+use std::future::Future;
 use std::time::{Duration, Instant};
 
 pub const PROTOCOL: u32 = 1;
@@ -125,7 +126,11 @@ impl Schedule {
         Self {
             intervals,
             next_volumes: kinds.volumes.then_some(start),
-            next_io: kinds.io.then_some(start + intervals.io),
+            next_io: if kinds.io {
+                start.checked_add(intervals.io)
+            } else {
+                None
+            },
             next_health: kinds.health.then_some(start),
         }
     }
@@ -143,15 +148,15 @@ impl Schedule {
         let mut jobs = Vec::new();
         if self.next_volumes.is_some_and(|t| t <= now) {
             jobs.push(Job::Volumes);
-            self.next_volumes = Some(now + self.intervals.usage);
+            self.next_volumes = now.checked_add(self.intervals.usage);
         }
         if self.next_health.is_some_and(|t| t <= now) {
             jobs.push(Job::Health);
-            self.next_health = Some(now + self.intervals.health);
+            self.next_health = now.checked_add(self.intervals.health);
         }
         if self.next_io.is_some_and(|t| t <= now) {
             jobs.push(Job::Io);
-            self.next_io = Some(now + self.intervals.io);
+            self.next_io = now.checked_add(self.intervals.io);
         }
         jobs
     }
@@ -160,7 +165,7 @@ impl Schedule {
     /// already planned, so a burst of signals produces one event.
     pub fn volumes_changed(&mut self, now: Instant) {
         if let Some(t) = self.next_volumes {
-            self.next_volumes = Some(t.min(now + DEBOUNCE));
+            self.next_volumes = Some(now.checked_add(DEBOUNCE).map_or(t, |d| t.min(d)));
         }
     }
 
@@ -245,6 +250,21 @@ impl Reconnect {
     }
 }
 
+/// How long the stream waits for udisks2 before treating it as gone.
+const UDISKS_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// `fut`, or a D-Bus error if it has not finished within `limit`.
+async fn within<T>(limit: Duration, fut: impl Future<Output = Result<T>>) -> Result<T> {
+    futures_lite::future::or(fut, async {
+        async_io::Timer::after(limit).await;
+        Err(Error::Dbus(format!(
+            "udisks2 did not answer within {} s",
+            limit.as_secs()
+        )))
+    })
+    .await
+}
+
 /// A connection counts only once udisks2 has answered: subscribe to changes
 /// first, so none slip past the snapshot, then fetch the drive list.
 async fn connect_udisks(kinds: Kinds) -> Result<(Client, Option<ChangeStream>, Vec<Drive>)> {
@@ -283,7 +303,7 @@ pub async fn run(
 
     loop {
         if client.is_none() && reconnect.due(Instant::now()) {
-            match connect_udisks(kinds).await {
+            match within(UDISKS_TIMEOUT, connect_udisks(kinds)).await {
                 Ok((c, ch, d)) => {
                     client = Some(c);
                     changes = ch;
@@ -294,11 +314,13 @@ pub async fn run(
                 }
                 Err(e) => {
                     reconnect.failed(Instant::now());
-                    if emit(&Event::error(format!(
-                        "udisks2 unavailable ({e}), retrying"
-                    )))
-                    .is_err()
-                    {
+                    let msg = match e {
+                        Error::Dbus(_) | Error::DbusUnavailable(_) => {
+                            format!("udisks2 unavailable ({e}), retrying")
+                        }
+                        _ => format!("startup failed ({e}), retrying"),
+                    };
+                    if emit(&Event::error(msg)).is_err() {
                         return;
                     }
                 }
@@ -316,11 +338,13 @@ pub async fn run(
                         continue;
                     };
                     let result = match job {
-                        Job::Volumes => c.drives().await.map(|d| {
+                        Job::Volumes => within(UDISKS_TIMEOUT, c.drives()).await.map(|d| {
                             drives = d.clone();
                             Event::Volumes { drives: d }
                         }),
-                        _ => c.health().await.map(|h| Event::Health { drives: h }),
+                        _ => within(UDISKS_TIMEOUT, c.health())
+                            .await
+                            .map(|h| Event::Health { drives: h }),
                     };
                     match result {
                         Ok(event) => event,
@@ -571,5 +595,58 @@ mod tests {
         let mut changes: ChangeStream = Box::pin(futures_lite::stream::empty());
         let wake = zbus::block_on(wait(Some(Instant::now() + 10 * SEC), Some(&mut changes)));
         assert_eq!(wake, Wake::StreamEnded);
+    }
+
+    #[test]
+    fn within_passes_a_ready_result_through() {
+        let out = zbus::block_on(within(SEC, async { Ok::<u32, Error>(7) }));
+        assert_eq!(out.unwrap(), 7);
+    }
+
+    #[test]
+    fn within_turns_a_hang_into_a_dbus_error() {
+        let hang = futures_lite::future::pending::<Result<u32>>();
+        let out = zbus::block_on(within(Duration::from_millis(20), hang));
+        assert!(matches!(out, Err(Error::Dbus(m)) if m.contains("did not answer")));
+    }
+
+    #[test]
+    fn huge_intervals_do_not_panic() {
+        let start = Instant::now();
+        let huge = Intervals {
+            io: Duration::MAX,
+            health: Duration::MAX,
+            usage: Duration::MAX,
+        };
+        let mut s = Schedule::new(start, Kinds::ALL, huge);
+        assert_eq!(s.take_due(start), vec![Job::Volumes, Job::Health]);
+        s.volumes_changed(start);
+        let _ = s.next_deadline();
+    }
+
+    #[test]
+    fn run_with_no_kinds_says_hello_and_returns() {
+        let mut lines: Vec<String> = Vec::new();
+        {
+            let mut emit = |e: &Event| -> std::io::Result<()> {
+                lines.push(serde_json::to_string(e).unwrap());
+                Ok(())
+            };
+            let none = Kinds {
+                volumes: false,
+                io: false,
+                health: false,
+            };
+            zbus::block_on(run(none, Intervals::default(), &mut emit));
+        }
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].starts_with("{\"event\":\"hello\""));
+    }
+
+    #[test]
+    fn run_returns_when_the_consumer_is_gone_before_hello() {
+        let mut emit =
+            |_: &Event| -> std::io::Result<()> { Err(std::io::ErrorKind::BrokenPipe.into()) };
+        zbus::block_on(run(Kinds::ALL, Intervals::default(), &mut emit));
     }
 }

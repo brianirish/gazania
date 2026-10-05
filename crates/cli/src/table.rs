@@ -312,6 +312,11 @@ mod tests {
         let lines: Vec<&str> = out.lines().collect();
         let col = |line: &str| line.chars().position(|c| c == '1' || c == '2').unwrap();
         assert_eq!(col(lines[1]), col(lines[2]));
+        assert!(
+            lines[1].starts_with("A      /dev/sda  40°C  1"),
+            "{:?}",
+            lines[1]
+        );
     }
 
     #[test]

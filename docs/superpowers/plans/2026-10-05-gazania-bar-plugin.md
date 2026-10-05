@@ -49,6 +49,7 @@ The spec's behavior is unchanged; these are naming and structure choices made wh
 
 - Reconnect with backoff lives inside `stream::run` (Task 5) rather than in a separate `reconnecting_watch()` wrapper; the stream is its only consumer in 0.2, and the app's overview keeps its existing watch loop.
 - `Client::changes()` (Task 4) is the spec's `Client::watch()`; it returns a boxed `ChangeStream` built by a new `watch_owned`, so the stream can live beside the client without borrowing it.
+- `Client::drives()` returns `Vec<Drive>` where the spec named `Client::volumes() -> Result<VolumesReport>`; the mountinfo fallback stays in `list_volumes()`, and the stream needs only the udisks2 path.
 - The spec's pure `next_due(...)` cadence function is the `Schedule` type (Task 5), with the same role: all timing decisions are pure and tested without a clock or a bus.
 - `Drive.device` takes the block's kernel `Device` (`/dev/nvme0n1`), not `PreferredDevice`, because `/proc/diskstats` names kernel devices.
 - The spec's "accent/warning/error" ring colors use a warning tone blended from the theme's accent and urgent colors, because Omarchy's palette has no warning color.
