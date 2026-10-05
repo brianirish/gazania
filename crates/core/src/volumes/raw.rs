@@ -1,7 +1,7 @@
 //! Untyped-but-flattened view of udisks2 objects. The udisks2 client fills this
 //! from D-Bus; tests build it by hand. Object paths are kept as strings.
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct RawDrive {
     pub path: String,
     pub model: String,
@@ -16,6 +16,17 @@ pub struct RawDrive {
     pub is_nvme: bool,
     /// Object has `org.freedesktop.UDisks2.Drive.Ata`.
     pub is_ata: bool,
+    /// `SmartTemperature` in Kelvin: a double on `Drive.Ata`, a uint16 on
+    /// `NVMe.Controller`. `None` when absent or 0.
+    pub smart_temperature_k: Option<f64>,
+    /// `SmartUpdated`, Unix seconds. `None` when 0 (never read).
+    pub smart_updated: Option<u64>,
+    /// `SmartPowerOnSeconds / 3600` on ATA, `SmartPowerOnHours` on NVMe.
+    pub smart_power_on_hours: Option<u64>,
+    /// `Drive.Ata.SmartFailing`; `None` on NVMe and on drives without SMART.
+    pub smart_failing: Option<bool>,
+    /// `NVMe.Controller.SmartCriticalWarning`, e.g. `["temperature"]`.
+    pub smart_critical_warning: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

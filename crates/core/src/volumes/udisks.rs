@@ -64,6 +64,8 @@ pub fn flatten(objects: Objects) -> Snapshot {
     let empty: Props = HashMap::new();
     for (path, ifaces) in objects {
         if let Some(d) = ifaces.get(IF_DRIVE) {
+            let ata = ifaces.get(IF_ATA);
+            let nvme = ifaces.get(IF_NVME);
             snapshot.drives.push(RawDrive {
                 path: path.clone(),
                 model: get_str(d, "Model"),
@@ -74,8 +76,27 @@ pub fn flatten(objects: Objects) -> Snapshot {
                 rotation_rate: get_i32(d, "RotationRate"),
                 removable: get_bool(d, "Removable"),
                 media_removable: get_bool(d, "MediaRemovable"),
-                is_nvme: ifaces.contains_key(IF_NVME),
-                is_ata: ifaces.contains_key(IF_ATA),
+                is_nvme: nvme.is_some(),
+                is_ata: ata.is_some(),
+                smart_temperature_k: ata
+                    .and_then(|p| get_f64(p, "SmartTemperature"))
+                    .or_else(|| {
+                        nvme.and_then(|p| get_u16(p, "SmartTemperature"))
+                            .map(f64::from)
+                    })
+                    .filter(|k| *k > 0.0),
+                smart_updated: ata
+                    .or(nvme)
+                    .map(|p| get_u64(p, "SmartUpdated"))
+                    .filter(|t| *t > 0),
+                smart_power_on_hours: ata
+                    .map(|p| get_u64(p, "SmartPowerOnSeconds") / 3600)
+                    .or_else(|| nvme.map(|p| get_u64(p, "SmartPowerOnHours")))
+                    .filter(|h| *h > 0),
+                smart_failing: ata.map(|p| get_bool(p, "SmartFailing")),
+                smart_critical_warning: nvme
+                    .map(|p| get_str_list(p, "SmartCriticalWarning"))
+                    .unwrap_or_default(),
             });
         }
         if let Some(b) = ifaces.get(IF_BLOCK) {
@@ -123,6 +144,34 @@ fn get_i32(p: &Props, key: &str) -> i32 {
     match p.get(key).map(|v| &**v) {
         Some(Value::I32(n)) => *n,
         _ => 0,
+    }
+}
+
+fn get_f64(p: &Props, key: &str) -> Option<f64> {
+    match p.get(key).map(|v| &**v) {
+        Some(Value::F64(n)) => Some(*n),
+        _ => None,
+    }
+}
+
+fn get_u16(p: &Props, key: &str) -> Option<u16> {
+    match p.get(key).map(|v| &**v) {
+        Some(Value::U16(n)) => Some(*n),
+        _ => None,
+    }
+}
+
+/// An `as` property.
+fn get_str_list(p: &Props, key: &str) -> Vec<String> {
+    match p.get(key).map(|v| &**v) {
+        Some(Value::Array(a)) => a
+            .iter()
+            .filter_map(|v| match v {
+                Value::Str(s) => Some(s.to_string()),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
     }
 }
 
@@ -188,6 +237,16 @@ mod tests {
     }
     fn b(v: bool) -> OwnedValue {
         OwnedValue::try_from(Value::from(v)).unwrap()
+    }
+    fn f(v: f64) -> OwnedValue {
+        OwnedValue::try_from(Value::from(v)).unwrap()
+    }
+    fn q(v: u16) -> OwnedValue {
+        OwnedValue::try_from(Value::from(v)).unwrap()
+    }
+    fn strs(vs: &[&str]) -> OwnedValue {
+        let list: Vec<String> = vs.iter().map(|v| v.to_string()).collect();
+        OwnedValue::try_from(Value::from(list)).unwrap()
     }
     fn o(v: &str) -> OwnedValue {
         OwnedValue::try_from(Value::from(ObjectPath::try_from(v).unwrap())).unwrap()
@@ -363,5 +422,70 @@ mod tests {
         assert!(z.is_swap);
         assert!(!z.has_filesystem);
         assert!(z.mount_points.is_empty());
+    }
+
+    #[test]
+    fn flatten_decodes_smart_fields_for_ata_and_nvme() {
+        let mut objects: Objects = HashMap::new();
+
+        let mut nvme: HashMap<String, Props> = HashMap::new();
+        nvme.insert(
+            IF_DRIVE.into(),
+            HashMap::from([("Model".to_string(), s("NVMe"))]),
+        );
+        nvme.insert(
+            IF_NVME.into(),
+            HashMap::from([
+                ("SmartTemperature".to_string(), q(315)),
+                ("SmartPowerOnHours".to_string(), u(30_438)),
+                ("SmartUpdated".to_string(), u(1_789_776_167)),
+                ("SmartCriticalWarning".to_string(), strs(&["temperature"])),
+            ]),
+        );
+        objects.insert("/drives/nvme".into(), nvme);
+
+        let mut ata: HashMap<String, Props> = HashMap::new();
+        ata.insert(
+            IF_DRIVE.into(),
+            HashMap::from([("Model".to_string(), s("SATA"))]),
+        );
+        ata.insert(
+            IF_ATA.into(),
+            HashMap::from([
+                ("SmartTemperature".to_string(), f(306.0)),
+                ("SmartPowerOnSeconds".to_string(), u(7_200)),
+                ("SmartUpdated".to_string(), u(0)),
+                ("SmartFailing".to_string(), b(true)),
+            ]),
+        );
+        objects.insert("/drives/ata".into(), ata);
+
+        let mut usb: HashMap<String, Props> = HashMap::new();
+        usb.insert(
+            IF_DRIVE.into(),
+            HashMap::from([("Model".to_string(), s("USB stick"))]),
+        );
+        objects.insert("/drives/usb".into(), usb);
+
+        let snap = flatten(objects);
+        let get = |p: &str| snap.drives.iter().find(|d| d.path == p).unwrap();
+
+        let n = get("/drives/nvme");
+        assert_eq!(n.smart_temperature_k, Some(315.0));
+        assert_eq!(n.smart_power_on_hours, Some(30_438));
+        assert_eq!(n.smart_updated, Some(1_789_776_167));
+        assert_eq!(n.smart_failing, None);
+        assert_eq!(n.smart_critical_warning, vec!["temperature".to_string()]);
+
+        let a = get("/drives/ata");
+        assert_eq!(a.smart_temperature_k, Some(306.0));
+        assert_eq!(a.smart_power_on_hours, Some(2));
+        assert_eq!(a.smart_updated, None);
+        assert_eq!(a.smart_failing, Some(true));
+
+        let plain = get("/drives/usb");
+        assert_eq!(plain.smart_temperature_k, None);
+        assert_eq!(plain.smart_power_on_hours, None);
+        assert!(plain.smart_critical_warning.is_empty());
     }
 }
