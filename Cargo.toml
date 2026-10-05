@@ -21,6 +21,7 @@ zbus = "5"
 zvariant = "5"
 rustix = { version = "1", features = ["fs"] }
 futures-lite = "2"
+async-io = "2"
 clap = { version = "4", features = ["derive"] }
 toml = "1"
 tempfile = "3"

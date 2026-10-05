@@ -8,6 +8,7 @@ pub mod format;
 pub mod health;
 pub mod io;
 pub mod scan;
+pub mod stream;
 pub mod types;
 pub mod volumes;
 

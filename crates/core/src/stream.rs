@@ -1,0 +1,506 @@
+//! The engine behind `gazania watch`: one loop that emits typed events for
+//! volumes, throughput and health on a schedule, pulls volumes forward when
+//! udisks2 reports a change, and reconnects with backoff when the system bus
+//! goes away. Every failure becomes an `error` event; the loop only ends when
+//! its consumer does.
+
+use crate::client::{backoff_delay, ChangeStream, Client};
+use crate::error::Error;
+use crate::health::Health;
+use crate::io::{IoRate, IoSampler};
+use crate::types::Drive;
+use futures_lite::StreamExt;
+use serde::{Deserialize, Serialize};
+use std::time::{Duration, Instant};
+
+pub const PROTOCOL: u32 = 1;
+/// How soon after a udisks2 change the volumes event goes out.
+pub const DEBOUNCE: Duration = Duration::from_millis(300);
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "event", rename_all = "lowercase")]
+pub enum Event {
+    Hello { protocol: u32, version: String },
+    Volumes { drives: Vec<Drive> },
+    Io { drives: Vec<IoRate> },
+    Health { drives: Vec<Health> },
+    Error { message: String },
+}
+
+impl Event {
+    pub fn hello() -> Self {
+        Event::Hello {
+            protocol: PROTOCOL,
+            version: env!("CARGO_PKG_VERSION").to_string(),
+        }
+    }
+
+    fn error(message: impl Into<String>) -> Self {
+        Event::Error {
+            message: message.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Kinds {
+    pub volumes: bool,
+    pub io: bool,
+    pub health: bool,
+}
+
+impl Kinds {
+    pub const ALL: Kinds = Kinds {
+        volumes: true,
+        io: true,
+        health: true,
+    };
+
+    /// A comma-separated subset of `volumes,io,health`.
+    pub fn parse(list: &str) -> Result<Kinds, String> {
+        let mut kinds = Kinds {
+            volumes: false,
+            io: false,
+            health: false,
+        };
+        for part in list.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+            match part {
+                "volumes" => kinds.volumes = true,
+                "io" => kinds.io = true,
+                "health" => kinds.health = true,
+                other => {
+                    return Err(format!(
+                        "unknown kind '{other}', expected volumes, io or health"
+                    ))
+                }
+            }
+        }
+        if !(kinds.volumes || kinds.io || kinds.health) {
+            return Err("expected at least one of volumes, io, health".into());
+        }
+        Ok(kinds)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Intervals {
+    pub io: Duration,
+    pub health: Duration,
+    pub usage: Duration,
+}
+
+impl Default for Intervals {
+    fn default() -> Self {
+        Self {
+            io: Duration::from_secs(1),
+            health: Duration::from_secs(60),
+            usage: Duration::from_secs(30),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Job {
+    Volumes,
+    Io,
+    Health,
+}
+
+/// When each kind of event is next due. Pure, so the cadence is testable
+/// without a clock or a bus.
+#[derive(Debug, Clone)]
+pub struct Schedule {
+    intervals: Intervals,
+    next_volumes: Option<Instant>,
+    next_io: Option<Instant>,
+    next_health: Option<Instant>,
+}
+
+impl Schedule {
+    /// Volumes and health are due at `start`; io one interval later, because
+    /// the first throughput sample only primes the counters.
+    pub fn new(start: Instant, kinds: Kinds, intervals: Intervals) -> Self {
+        Self {
+            intervals,
+            next_volumes: kinds.volumes.then_some(start),
+            next_io: kinds.io.then_some(start + intervals.io),
+            next_health: kinds.health.then_some(start),
+        }
+    }
+
+    pub fn next_deadline(&self) -> Option<Instant> {
+        [self.next_volumes, self.next_io, self.next_health]
+            .into_iter()
+            .flatten()
+            .min()
+    }
+
+    /// The jobs due at `now`, in Volumes, Health, Io order; each is
+    /// rescheduled one interval after `now`.
+    pub fn take_due(&mut self, now: Instant) -> Vec<Job> {
+        let mut jobs = Vec::new();
+        if self.next_volumes.is_some_and(|t| t <= now) {
+            jobs.push(Job::Volumes);
+            self.next_volumes = Some(now + self.intervals.usage);
+        }
+        if self.next_health.is_some_and(|t| t <= now) {
+            jobs.push(Job::Health);
+            self.next_health = Some(now + self.intervals.health);
+        }
+        if self.next_io.is_some_and(|t| t <= now) {
+            jobs.push(Job::Io);
+            self.next_io = Some(now + self.intervals.io);
+        }
+        jobs
+    }
+
+    /// A udisks2 change: volumes go out within `DEBOUNCE`, never later than
+    /// already planned, so a burst of signals produces one event.
+    pub fn volumes_changed(&mut self, now: Instant) {
+        if let Some(t) = self.next_volumes {
+            self.next_volumes = Some(t.min(now + DEBOUNCE));
+        }
+    }
+
+    /// After a reconnect, volumes and health go out again right away.
+    pub fn refresh_now(&mut self, now: Instant) {
+        if self.next_volumes.is_some() {
+            self.next_volumes = Some(now);
+        }
+        if self.next_health.is_some() {
+            self.next_health = Some(now);
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Wake {
+    Timer,
+    Change,
+    StreamEnded,
+}
+
+/// Sleeps until `deadline` or the next udisks2 change, whichever is first.
+async fn wait(deadline: Option<Instant>, changes: Option<&mut ChangeStream>) -> Wake {
+    let timer = async {
+        match deadline {
+            Some(at) => {
+                async_io::Timer::at(at).await;
+            }
+            None => futures_lite::future::pending::<()>().await,
+        }
+        Wake::Timer
+    };
+    match changes {
+        Some(stream) => {
+            let change = async {
+                match stream.next().await {
+                    Some(_) => Wake::Change,
+                    None => Wake::StreamEnded,
+                }
+            };
+            futures_lite::future::or(change, timer).await
+        }
+        None => timer.await,
+    }
+}
+
+/// Runs the stream until `emit` fails, which means the consumer went away.
+pub async fn run(
+    kinds: Kinds,
+    intervals: Intervals,
+    emit: &mut dyn FnMut(&Event) -> std::io::Result<()>,
+) {
+    if emit(&Event::hello()).is_err() {
+        return;
+    }
+    let mut schedule = Schedule::new(Instant::now(), kinds, intervals);
+    let mut sampler = IoSampler::new();
+    if kinds.io {
+        // Prime the counters; the first real rate comes one interval later.
+        let _ = sampler.sample(&[]);
+    }
+    let mut drives: Vec<Drive> = Vec::new();
+    let mut client: Option<Client> = None;
+    let mut changes: Option<ChangeStream> = None;
+    let mut attempt: u32 = 0;
+    let mut reconnect_at: Option<Instant> = Some(Instant::now());
+    let mut was_down = false;
+
+    loop {
+        if client.is_none() && reconnect_at.is_some_and(|t| t <= Instant::now()) {
+            match Client::connect().await {
+                Ok(c) => {
+                    if kinds.volumes {
+                        changes = c.changes().await.ok();
+                    }
+                    // Throughput needs each drive's device even without volumes.
+                    if let Ok(d) = c.drives().await {
+                        drives = d;
+                    }
+                    client = Some(c);
+                    attempt = 0;
+                    reconnect_at = None;
+                    if was_down {
+                        schedule.refresh_now(Instant::now());
+                        was_down = false;
+                    }
+                }
+                Err(e) => {
+                    was_down = true;
+                    reconnect_at = Some(Instant::now() + backoff_delay(attempt));
+                    attempt = attempt.saturating_add(1);
+                    if emit(&Event::error(format!(
+                        "udisks2 unavailable ({e}), retrying"
+                    )))
+                    .is_err()
+                    {
+                        return;
+                    }
+                }
+            }
+        }
+
+        for job in schedule.take_due(Instant::now()) {
+            let event = match job {
+                Job::Io => match sampler.sample(&drives) {
+                    Ok(rates) => Event::Io { drives: rates },
+                    Err(e) => Event::error(e.to_string()),
+                },
+                Job::Volumes | Job::Health => {
+                    let Some(c) = client.as_ref() else {
+                        continue;
+                    };
+                    let result = match job {
+                        Job::Volumes => c.drives().await.map(|d| {
+                            drives = d.clone();
+                            Event::Volumes { drives: d }
+                        }),
+                        _ => c.health().await.map(|h| Event::Health { drives: h }),
+                    };
+                    match result {
+                        Ok(event) => event,
+                        Err(e @ (Error::Dbus(_) | Error::DbusUnavailable(_))) => {
+                            client = None;
+                            changes = None;
+                            was_down = true;
+                            reconnect_at = Some(Instant::now() + backoff_delay(attempt));
+                            attempt = attempt.saturating_add(1);
+                            Event::error(format!("udisks2 connection lost ({e}), reconnecting"))
+                        }
+                        Err(e) => Event::error(e.to_string()),
+                    }
+                }
+            };
+            if emit(&event).is_err() {
+                return;
+            }
+        }
+
+        let deadline = [schedule.next_deadline(), reconnect_at]
+            .into_iter()
+            .flatten()
+            .min();
+        match wait(deadline, changes.as_mut()).await {
+            Wake::Timer => {}
+            Wake::Change => schedule.volumes_changed(Instant::now()),
+            Wake::StreamEnded => {
+                client = None;
+                changes = None;
+                was_down = true;
+                reconnect_at = Some(Instant::now());
+                if emit(&Event::error("udisks2 signal stream ended, reconnecting")).is_err() {
+                    return;
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::volumes::Change;
+
+    const SEC: Duration = Duration::from_secs(1);
+
+    #[test]
+    fn hello_is_the_documented_first_line() {
+        let line = serde_json::to_string(&Event::hello()).unwrap();
+        assert_eq!(
+            line,
+            format!(
+                "{{\"event\":\"hello\",\"protocol\":1,\"version\":\"{}\"}}",
+                env!("CARGO_PKG_VERSION")
+            )
+        );
+    }
+
+    #[test]
+    fn io_event_uses_the_documented_field_names() {
+        let event = Event::Io {
+            drives: vec![IoRate {
+                device: "/dev/nvme0n1".into(),
+                read_bps: 5,
+                write_bps: 6,
+            }],
+        };
+        assert_eq!(
+            serde_json::to_string(&event).unwrap(),
+            r#"{"event":"io","drives":[{"device":"/dev/nvme0n1","read_bps":5,"write_bps":6}]}"#
+        );
+    }
+
+    #[test]
+    fn every_event_round_trips_as_one_line() {
+        let events = vec![
+            Event::hello(),
+            Event::Volumes { drives: vec![] },
+            Event::Io {
+                drives: vec![IoRate {
+                    device: "/dev/sda".into(),
+                    read_bps: 1,
+                    write_bps: 2,
+                }],
+            },
+            Event::Health {
+                drives: vec![Health {
+                    drive_id: "/d".into(),
+                    device: None,
+                    model: "M".into(),
+                    temperature_c: Some(41.9),
+                    power_on_hours: None,
+                    failing: false,
+                    warnings: vec![],
+                    updated: None,
+                }],
+            },
+            Event::Error {
+                message: "udisks2 connection lost".into(),
+            },
+        ];
+        for event in events {
+            let line = serde_json::to_string(&event).unwrap();
+            assert!(!line.contains('\n'));
+            let back: Event = serde_json::from_str(&line).unwrap();
+            assert_eq!(back, event);
+        }
+    }
+
+    #[test]
+    fn kinds_parse_subsets_and_reject_unknown_or_empty() {
+        assert_eq!(Kinds::parse("volumes,io,health"), Ok(Kinds::ALL));
+        assert_eq!(
+            Kinds::parse(" io "),
+            Ok(Kinds {
+                volumes: false,
+                io: true,
+                health: false
+            })
+        );
+        assert!(Kinds::parse("io,disk").unwrap_err().contains("disk"));
+        assert!(Kinds::parse("").is_err());
+        assert!(Kinds::parse(",").is_err());
+    }
+
+    #[test]
+    fn default_intervals_match_the_protocol() {
+        let i = Intervals::default();
+        assert_eq!((i.io, i.health, i.usage), (SEC, 60 * SEC, 30 * SEC));
+    }
+
+    #[test]
+    fn volumes_and_health_are_due_at_start_and_io_after_one_interval() {
+        let start = Instant::now();
+        let mut s = Schedule::new(start, Kinds::ALL, Intervals::default());
+        assert_eq!(s.next_deadline(), Some(start));
+        assert_eq!(s.take_due(start), vec![Job::Volumes, Job::Health]);
+        assert_eq!(s.next_deadline(), Some(start + SEC));
+        assert_eq!(s.take_due(start + SEC), vec![Job::Io]);
+        assert_eq!(s.take_due(start + SEC), vec![]);
+    }
+
+    #[test]
+    fn jobs_reschedule_one_interval_after_they_ran() {
+        let start = Instant::now();
+        let mut s = Schedule::new(start, Kinds::ALL, Intervals::default());
+        s.take_due(start);
+        let late = start + 2 * SEC + Duration::from_millis(500);
+        assert_eq!(s.take_due(late), vec![Job::Io]);
+        assert_eq!(s.next_deadline(), Some(late + SEC));
+    }
+
+    #[test]
+    fn only_requested_kinds_are_scheduled() {
+        let start = Instant::now();
+        let kinds = Kinds {
+            volumes: false,
+            io: true,
+            health: false,
+        };
+        let mut s = Schedule::new(start, kinds, Intervals::default());
+        assert_eq!(s.take_due(start), vec![]);
+        assert_eq!(s.take_due(start + 61 * SEC), vec![Job::Io]);
+    }
+
+    #[test]
+    fn a_change_pulls_volumes_forward_and_a_burst_coalesces() {
+        let start = Instant::now();
+        let kinds = Kinds {
+            volumes: true,
+            io: false,
+            health: false,
+        };
+        let mut s = Schedule::new(start, kinds, Intervals::default());
+        s.take_due(start);
+        assert_eq!(s.next_deadline(), Some(start + 30 * SEC));
+        s.volumes_changed(start + 5 * SEC);
+        s.volumes_changed(start + 5 * SEC + Duration::from_millis(100));
+        assert_eq!(s.next_deadline(), Some(start + 5 * SEC + DEBOUNCE));
+    }
+
+    #[test]
+    fn a_change_is_ignored_when_volumes_are_not_requested() {
+        let start = Instant::now();
+        let kinds = Kinds {
+            volumes: false,
+            io: true,
+            health: false,
+        };
+        let mut s = Schedule::new(start, kinds, Intervals::default());
+        s.volumes_changed(start);
+        assert_eq!(s.next_deadline(), Some(start + SEC));
+    }
+
+    #[test]
+    fn refresh_now_makes_volumes_and_health_due_again() {
+        let start = Instant::now();
+        let mut s = Schedule::new(start, Kinds::ALL, Intervals::default());
+        s.take_due(start);
+        let later = start + 3 * SEC;
+        s.refresh_now(later);
+        assert_eq!(s.take_due(later), vec![Job::Volumes, Job::Health, Job::Io]);
+    }
+
+    #[test]
+    fn wait_wakes_on_the_deadline_without_a_change_stream() {
+        let start = Instant::now();
+        let wake = zbus::block_on(wait(Some(start + Duration::from_millis(20)), None));
+        assert_eq!(wake, Wake::Timer);
+        assert!(start.elapsed() >= Duration::from_millis(20));
+    }
+
+    #[test]
+    fn wait_reports_a_change_before_the_deadline() {
+        let mut changes: ChangeStream = Box::pin(futures_lite::stream::once(Change::ObjectsAdded));
+        let wake = zbus::block_on(wait(Some(Instant::now() + 10 * SEC), Some(&mut changes)));
+        assert_eq!(wake, Wake::Change);
+    }
+
+    #[test]
+    fn wait_reports_an_ended_change_stream() {
+        let mut changes: ChangeStream = Box::pin(futures_lite::stream::empty());
+        let wake = zbus::block_on(wait(Some(Instant::now() + 10 * SEC), Some(&mut changes)));
+        assert_eq!(wake, Wake::StreamEnded);
+    }
+}

@@ -17,6 +17,7 @@ zbus.workspace = true
 zvariant.workspace = true
 rustix.workspace = true
 futures-lite.workspace = true
+async-io.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
