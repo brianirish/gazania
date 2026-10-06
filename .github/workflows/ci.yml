@@ -13,7 +13,7 @@ jobs:
         run: |
           pacman -Syu --noconfirm --needed base-devel git rust meson ninja blueprint-compiler gtk4 libadwaita udisks2 pkgconf
           git config --global --add safe.directory '*'
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
